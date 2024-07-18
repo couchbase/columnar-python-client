@@ -1,0 +1,84 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-added-large-files
+      - id: check-toml
+      - id: check-merge-conflict
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v18.1.6
+    hooks:
+      - id: clang-format
+        files: src/.*\.(cxx|hxx)$
+        exclude: ^deps/
+  - repo: https://github.com/hhatto/autopep8
+    rev: v2.2.0
+    hooks:
+      - id: autopep8
+        exclude: ^(deps/|src/)
+  - repo: https://github.com/pycqa/flake8
+    rev: 5.0.4
+    hooks:
+      - id: flake8
+        exclude: |
+          (?x)^(
+              deps/|
+              src/|
+              examples/
+          )
+        args:
+          [
+            --max-line-length=120,
+            --max-complexity=10
+          ]
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        exclude: |
+          (?x)^(
+              deps/|
+              src/
+          )
+        args:
+          [
+            "--multi-line 1",
+            "--force-grid-wrap 3",
+            "--use-parentheses True",
+            "--ensure-newline-before-comments True",
+            "--line-length 120",
+            "--order-by-type True"
+          ]
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        exclude: |
+          (?x)^(
+              deps/|
+              src/|
+              acouchbase_columnar/tests/|
+              couchbase_columnar/tests/|
+              tests/|
+              couchbase_columnar_version.py
+          )
+        args:
+          [
+              --quiet
+          ]
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: "./run-mypy"
+        language: python
+        additional_dependencies:
+          - mypy==1.10.1
+        types:
+          - python
+        require_serial: true
+        verbose: true

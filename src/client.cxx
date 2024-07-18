@@ -1,0 +1,232 @@
+/*
+ *   Copyright 2016-2022. Couchbase, Inc.
+ *   All Rights Reserved.
+ *
+ *   Licensed under the Apache License, Version 2.0 (the "License");
+ *   you may not use this file except in compliance with the License.
+ *   You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *   Unless required by applicable law or agreed to in writing, software
+ *   distributed under the License is distributed on an "AS IS" BASIS,
+ *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *   See the License for the specific language governing permissions and
+ *   limitations under the License.
+ */
+
+#include "client.hxx"
+#include <cstdlib>
+#include <structmember.h>
+
+#include <core/meta/version.hxx>
+
+#include "columnar_query.hxx"
+#include "connection.hxx"
+#include "exceptions.hxx"
+#include "logger.hxx"
+#include "result.hxx"
+
+void
+add_ops_enum(PyObject* pyObj_module)
+{
+  PyObject* pyObj_enum_module = PyImport_ImportModule("enum");
+  if (!pyObj_enum_module) {
+    return;
+  }
+  PyObject* pyObj_enum_class = PyObject_GetAttrString(pyObj_enum_module, "Enum");
+
+  PyObject* pyObj_enum_values = PyUnicode_FromString(Operations::ALL_OPERATIONS());
+  PyObject* pyObj_enum_name = PyUnicode_FromString("Operations");
+  // PyTuple_Pack returns new reference, need to Py_DECREF values provided
+  PyObject* pyObj_args = PyTuple_Pack(2, pyObj_enum_name, pyObj_enum_values);
+  Py_DECREF(pyObj_enum_name);
+  Py_DECREF(pyObj_enum_values);
+
+  PyObject* pyObj_kwargs = PyDict_New();
+  PyObject_SetItem(
+    pyObj_kwargs, PyUnicode_FromString("module"), PyModule_GetNameObject(pyObj_module));
+  PyObject* pyObj_operations = PyObject_Call(pyObj_enum_class, pyObj_args, pyObj_kwargs);
+  Py_DECREF(pyObj_args);
+  Py_DECREF(pyObj_kwargs);
+
+  if (PyModule_AddObject(pyObj_module, "operations", pyObj_operations) < 0) {
+    // only need to Py_DECREF on failure to add when using PyModule_AddObject()
+    Py_XDECREF(pyObj_operations);
+    return;
+  }
+}
+
+void
+add_constants(PyObject* module)
+{
+  if (PyModule_AddIntConstant(module, "FMT_JSON", PYCBC_FMT_JSON) < 0) {
+    Py_XDECREF(module);
+    return;
+  }
+  if (PyModule_AddIntConstant(module, "FMT_BYTES", PYCBC_FMT_BYTES) < 0) {
+    Py_XDECREF(module);
+    return;
+  }
+  if (PyModule_AddIntConstant(module, "FMT_UTF8", PYCBC_FMT_UTF8) < 0) {
+    Py_XDECREF(module);
+    return;
+  }
+  if (PyModule_AddIntConstant(module, "FMT_PICKLE", PYCBC_FMT_PICKLE) < 0) {
+    Py_XDECREF(module);
+    return;
+  }
+  if (PyModule_AddIntConstant(module, "FMT_LEGACY_MASK", PYCBC_FMT_LEGACY_MASK) < 0) {
+    Py_XDECREF(module);
+    return;
+  }
+  if (PyModule_AddIntConstant(module, "FMT_COMMON_MASK", PYCBC_FMT_COMMON_MASK) < 0) {
+    Py_XDECREF(module);
+    return;
+  }
+  auto cxxcbc_metadata = couchbase::core::meta::sdk_build_info_json();
+  if (PyModule_AddStringConstant(module, "CXXCBC_METADATA", cxxcbc_metadata.c_str())) {
+    Py_XDECREF(module);
+    return;
+  }
+}
+
+static PyObject*
+columnar_query(PyObject* self, PyObject* args, PyObject* kwargs)
+{
+  PyObject* res = handle_columnar_query(self, args, kwargs);
+  if (res == nullptr && PyErr_Occurred() == nullptr) {
+    pycbcc_set_python_exception(PycbccError::UnsuccessfulOperation,
+                                __FILE__,
+                                __LINE__,
+                                "Unable to perform Columnar query operation.");
+  }
+  return res;
+}
+
+static PyObject*
+create_connection(PyObject* self, PyObject* args, PyObject* kwargs)
+{
+  PyObject* res = handle_create_connection(self, args, kwargs);
+  if (res == nullptr && PyErr_Occurred() == nullptr) {
+    pycbcc_set_python_exception(
+      PycbccError::UnsuccessfulOperation, __FILE__, __LINE__, "Unable to create connection.");
+  }
+  return res;
+}
+
+static PyObject*
+get_connection_information(PyObject* self, PyObject* args, PyObject* kwargs)
+{
+  PyObject* res = get_connection_info(self, args, kwargs);
+  if (res == nullptr && PyErr_Occurred() == nullptr) {
+    pycbcc_set_python_exception(PycbccError::UnsuccessfulOperation,
+                                __FILE__,
+                                __LINE__,
+                                "Unable to get connection information.");
+  }
+  return res;
+}
+
+static PyObject*
+close_connection(PyObject* self, PyObject* args, PyObject* kwargs)
+{
+  PyObject* res = handle_close_connection(self, args, kwargs);
+  if (res == nullptr && PyErr_Occurred() != nullptr) {
+    pycbcc_set_python_exception(
+      PycbccError::UnsuccessfulOperation, __FILE__, __LINE__, "Unable to close connection.");
+  }
+  return res;
+}
+
+static struct PyMethodDef methods[] = { { "create_connection",
+                                          (PyCFunction)create_connection,
+                                          METH_VARARGS | METH_KEYWORDS,
+                                          "Create connection object" },
+                                        { "get_connection_info",
+                                          (PyCFunction)get_connection_information,
+                                          METH_VARARGS | METH_KEYWORDS,
+                                          "Get connection options" },
+                                        { "close_connection",
+                                          (PyCFunction)close_connection,
+                                          METH_VARARGS | METH_KEYWORDS,
+                                          "Close a connection" },
+                                        { "columnar_query",
+                                          (PyCFunction)columnar_query,
+                                          METH_VARARGS | METH_KEYWORDS,
+                                          "Execute a streaming columnar query" },
+                                        { nullptr, nullptr, 0, nullptr } };
+
+static struct PyModuleDef pycbcc_core_module = { { PyObject_HEAD_INIT(NULL) nullptr, 0, nullptr },
+                                                 "pycbcc_core",
+                                                 "Python interface to couchbase-cxx-client",
+                                                 -1,
+                                                 methods,
+                                                 nullptr,
+                                                 nullptr,
+                                                 nullptr,
+                                                 nullptr };
+
+PyMODINIT_FUNC
+PyInit_pycbcc_core(void)
+{
+  Py_Initialize();
+  PyObject* m = nullptr;
+
+  PyObject* result_type;
+  if (pycbcc_result_type_init(&result_type) < 0) {
+    return nullptr;
+  }
+
+  PyObject* exception_base_type;
+  if (pycbcc_exception_base_type_init(&exception_base_type) < 0) {
+    return nullptr;
+  }
+
+  PyObject* columnar_query_iterator_type;
+  if (pycbcc_columnar_query_iterator_type_init(&columnar_query_iterator_type) < 0) {
+    return nullptr;
+  }
+
+  PyObject* pycbcc_logger_type;
+  if (pycbcc_logger_type_init(&pycbcc_logger_type) < 0) {
+    return nullptr;
+  }
+
+  m = PyModule_Create(&pycbcc_core_module);
+  if (m == nullptr) {
+    return nullptr;
+  }
+
+  Py_INCREF(result_type);
+  if (PyModule_AddObject(m, "result", result_type) < 0) {
+    Py_DECREF(result_type);
+    Py_DECREF(m);
+    return nullptr;
+  }
+
+  Py_INCREF(exception_base_type);
+  if (PyModule_AddObject(m, "exception", exception_base_type) < 0) {
+    Py_DECREF(exception_base_type);
+    Py_DECREF(m);
+    return nullptr;
+  }
+
+  Py_INCREF(columnar_query_iterator_type);
+  if (PyModule_AddObject(m, "columnar_query_iterator", columnar_query_iterator_type) < 0) {
+    Py_DECREF(columnar_query_iterator_type);
+    Py_DECREF(m);
+    return nullptr;
+  }
+
+  Py_INCREF(pycbcc_logger_type);
+  if (PyModule_AddObject(m, "pycbcc_logger", pycbcc_logger_type) < 0) {
+    Py_DECREF(pycbcc_logger_type);
+    Py_DECREF(m);
+    return nullptr;
+  }
+
+  add_ops_enum(m);
+  add_constants(m);
+  return m;
+}

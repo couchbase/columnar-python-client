@@ -1,0 +1,184 @@
+#  Copyright 2016-2024. Couchbase, Inc.
+#  All Rights Reserved.
+#
+#  Licensed under the Apache License, Version 2.0 (the "License")
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+from __future__ import annotations
+
+import json
+import sys
+from dataclasses import asdict, dataclass
+from typing import (TYPE_CHECKING,
+                    Any,
+                    Callable,
+                    Dict,
+                    Optional,
+                    Union)
+
+if sys.version_info < (3, 10):
+    from typing_extensions import TypeAlias
+else:
+    from typing import TypeAlias
+
+from couchbase_columnar.common.deserializer import Deserializer
+from couchbase_columnar.common.options import QueryOptions
+from couchbase_columnar.protocol.options import ClusterOptionsTransformedKwargs, QueryOptionsTransformedKwargs
+
+if TYPE_CHECKING:
+    from acouchbase_columnar.protocol.core.client_adapter import _ClientAdapter as AsyncClientAdapter
+    from couchbase_columnar.protocol.core.client_adapter import _ClientAdapter as BlockingClientAdapter
+
+
+@dataclass
+class CloseConnectionRequest:
+    callback: Optional[Callable[..., None]] = None
+    errback: Optional[Callable[..., None]] = None
+
+    def to_req_dict(self) -> Dict[str, Any]:
+        return ClusterRequestBuilder.to_req_dict(self)
+
+
+@dataclass
+class ConnectRequest:
+    connection_str: str
+    credential: Dict[str, str]
+    options: Optional[ClusterOptionsTransformedKwargs] = None
+
+    def to_req_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class QueryRequest:
+    statement: str
+    deserializer: Deserializer
+    options: Optional[QueryOptionsTransformedKwargs] = None
+
+    # extra not w/in QueryOptions
+    streaming_timeout: Optional[int] = None
+
+    def to_req_dict(self) -> Dict[str, Any]:
+        req_dict = {k: v for k, v in asdict(self).items() if v is not None}
+        # we don't need the deserializer in the request
+        req_dict.pop('deserializer', None)
+        req_options = req_dict.pop('options', None)
+        # core C++ wants all args JSONified,
+        for opt_key, opt_val in req_options.items():
+            if opt_key == 'serializer':
+                continue
+            elif opt_key == 'raw':
+                req_dict[opt_key] = {f'{k}': json.dumps(v).encode('utf-8')
+                                     for k, v in opt_val.items()}
+            elif opt_key == 'positional_parameters':
+                req_dict[opt_key] = [json.dumps(arg).encode('utf-8') for arg in opt_val]
+            elif opt_key == 'named_parameters':
+                req_dict[opt_key] = {f'${k}': json.dumps(v).encode('utf-8')
+                                     for k, v in opt_val.items()}
+            else:
+                req_dict[opt_key] = opt_val
+
+        final_req = {}
+        # if 'callback' in req_dict:
+        #     final_req['callback'] = req_dict.pop('callback')
+        # if 'errback' in req_dict:
+        #     final_req['errback'] = req_dict.pop('errback')
+        # if 'row_callback' in req_dict:
+        #     final_req['row_callback'] = req_dict.pop('row_callback')
+        if 'streaming_timeout' in req_dict:
+            final_req['streaming_timeout'] = req_dict.pop('streaming_timeout')
+        final_req['query_args'] = req_dict
+        return final_req
+
+
+ClusterRequest: TypeAlias = Union[CloseConnectionRequest,
+                                  ConnectRequest]
+
+
+class ClusterRequestBuilder:
+
+    def __init__(self,
+                 client: Union[AsyncClientAdapter, BlockingClientAdapter]) -> None:
+        self._conn_details = client.connection_details
+        self._opts_builder = client.options_builder
+
+    def build_connection_request(self) -> ConnectRequest:
+        return ConnectRequest(self._conn_details.connection_str,
+                              self._conn_details.credential,
+                              self._conn_details.cluster_options)
+
+    def build_close_connection_request(self) -> CloseConnectionRequest:
+        return CloseConnectionRequest()
+
+    def build_query_request(self,  # noqa: C901
+                            statement: str,
+                            *args: object,
+                            **kwargs: object) -> QueryRequest:  # noqa: C901
+        # default if no options provided
+        opts = QueryOptions()
+        args_list = list(args)
+        for arg in args_list:
+            if isinstance(arg, QueryOptions):
+                # we have options passed in
+                opts = arg
+                args_list.remove(arg)
+
+        # need to pop out named params prior to sending options to the builder
+        named_param_keys = list(filter(lambda k: k not in QueryOptions.VALID_OPTION_KEYS, kwargs.keys()))
+        named_params = {}
+        for key in named_param_keys:
+            named_params[key] = kwargs.pop(key)
+
+        q_opts = self._opts_builder.build_options(QueryOptions,
+                                                  QueryOptionsTransformedKwargs,
+                                                  kwargs,
+                                                  opts)
+        # positional params and named params passed in outside of QueryOptions serve as overrides
+        if args_list and len(args_list) > 0:
+            q_opts['positional_parameters'] = args_list
+        if named_params and len(named_params) > 0:
+            q_opts['named_parameters'] = named_params
+        # metrics default to True
+        if 'metrics' not in q_opts:
+            q_opts['metrics'] = True
+        # add the default serializer if one does not exist
+        deserializer = q_opts.pop('deserializer', None) or self._conn_details.default_deserializer
+
+        timeout = q_opts.get('timeout')
+        if timeout is None and self._conn_details.streaming_timeouts is not None:
+            streaming_timeout = self._conn_details.streaming_timeouts.get('query_timeout')
+        else:
+            streaming_timeout = timeout
+        final_opts = {}
+        for k, v in q_opts.items():
+            if k != 'deserializer':
+                final_opts[k] = v
+
+        return QueryRequest(statement,
+                            deserializer,
+                            options=q_opts,
+                            streaming_timeout=streaming_timeout)
+
+    @staticmethod
+    def to_req_dict(request: ClusterRequest) -> Dict[str, Any]:
+        req_dict = asdict(request)
+        # always handle callbacks
+        callback = req_dict.pop('callback', None)
+        errback = req_dict.pop('errback', None)
+
+        # we don't want the callback/errback in the request if it doesn't exist
+        if callback:
+            req_dict['callback'] = callback
+        if errback:
+            req_dict['errback'] = errback
+
+        return req_dict
