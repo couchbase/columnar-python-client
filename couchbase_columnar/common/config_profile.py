@@ -63,10 +63,13 @@ class WanDevelopmentProfile(ConfigProfile):
         super().__init__()
 
     def apply(self, options: ClusterOptions) -> None:
-        # Need to use keys in couchbase.logic.ClusterTimeoutOptionsBase._VALID_OPTS
-        options['connect_timeout'] = timedelta(seconds=20)
-        options['analytics_timeout'] = timedelta(seconds=120)
-        options['management_timeout'] = timedelta(seconds=120)
+        options['connect_timeout'] = timedelta(seconds=60)
+        options['dispatch_timeout'] = timedelta(seconds=120)
+        options['dns_srv_timeout'] = timedelta(seconds=20)
+        # options['management_timeout'] = timedelta(seconds=120)
+        options['query_timeout'] = timedelta(minutes=15)
+        options['resolve_timeout'] = timedelta(seconds=20)
+        options['socket_connect_timeout'] = timedelta(seconds=20)
 
 
 class ConfigProfiles():
