@@ -35,11 +35,11 @@ PYCBCC_README = os.path.join(os.path.dirname(__file__), 'README.md')
 PYCBCC_VERSION = couchbase_columnar_version.get_version()
 
 
-package_data = {}
+package_data = {'couchbase_columnar.common.core.nonprod_certificates': ['*.pem']}
 # some more Windows tomfoolery...
-# TODO:  verify this works w/ cb2 updates
 if platform.system() == 'Windows':
-    package_data = {'couchbase_columnar.protocol': ['pycbcc_core.pyd']}
+    package_data.update(**{'couchbase_columnar.protocol': ['pycbcc_core.pyd']})
+
 
 print(f'Python Columnar SDK version: {PYCBCC_VERSION}')
 
@@ -47,7 +47,7 @@ setup(name='couchbase_columnar',
       version=PYCBCC_VERSION,
       ext_modules=[CMakeExtension('couchbase_columnar.protocol.pycbcc_core')],
       cmdclass={'build': BuildCommand, 'build_ext': CMakeBuildExt, 'configure_ext': CMakeConfigureExt},
-      python_requires='>=3.7',
+      python_requires='>=3.8',
       packages=find_packages(
           include=['acouchbase_columnar', 'couchbase_columnar', 'acouchbase_columnar.*', 'couchbase_columnar.*'],
           exclude=['acouchbase_columnar.tests', 'couchbase_columnar.tests']),

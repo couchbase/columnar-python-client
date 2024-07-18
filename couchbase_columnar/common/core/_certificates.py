@@ -30,11 +30,14 @@ class _Certificates:
         Returns:
             List[str]: List of nonprod Capella certificates.
         """
+        import os
         import warnings
         from pathlib import Path
         warnings.warn('Only use non-prod certificate in DEVELOPMENT environments.', ResourceWarning)
         nonprod_cert_dir = Path(Path(__file__).resolve().parent, 'nonprod_certificates')
         nonprod_certs: List[str] = []
         for cert in nonprod_cert_dir.iterdir():
+            if os.path.isdir(cert):
+                continue
             nonprod_certs.append(cert.read_text())
         return nonprod_certs
