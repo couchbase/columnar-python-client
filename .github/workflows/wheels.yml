@@ -100,7 +100,8 @@ jobs:
           python setup.py sdist
       - uses: actions/upload-artifact@v4
         with:
-          name: pycbcc-sdist
+          retention-days: 1
+          name: pycbcc-${{ inputs.version }}-sdist
           path: |
             ./dist/*.tar.gz
 
@@ -108,12 +109,12 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        python-version: ["3.9"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
     needs: sdist
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: pycbcc-sdist
+          name: pycbcc-${{ inputs.version }}-sdist
       - name: Extract sdist source
         run: |
           ls -alh
@@ -135,7 +136,11 @@ jobs:
       - name: Build wheel
         run: |
           mkdir bdist
-          PYCBCC_BUILD_TYPE=RelWithDebInfo PYCBCC_USE_OPENSSL=off python -m pip wheel . --no-deps -w bdist -v -v -v
+          python -m pip wheel . --no-deps -w bdist -v -v -v
+        env:
+          PYCBCC_BUILD_TYPE: RelWithDebInfo
+          PYCBCC_USE_OPENSSL: OFF
+          PYCBCC_VERBOSE_MAKEFILE: ON
       - name: Reduce wheel size
         id: reduce_wheel_size
         run: |
@@ -153,6 +158,7 @@ jobs:
           cd ../../..
           python -m wheel pack $WHEEL_NAME
           ls -alh
+          WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
           echo "wheel_name=${WHEEL_NAME}" >> "$GITHUB_OUTPUT"
         env:
           PYCBCC_VERSION: ${{ inputs.version }}
@@ -161,18 +167,18 @@ jobs:
           retention-days: 1
           name: ${{ steps.reduce_wheel_size.outputs.wheel_name }}
           path: |
-            ./bdist/${{ steps.reduce_wheel_size.outputs.wheel_name }}.whl
+            ./bdist/${{ steps.reduce_wheel_size.outputs.wheel_name }}
 
   macos_x86_64_wheel:
     runs-on: macos-13
     strategy:
       matrix:
-        python-version: ["3.9"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
     needs: sdist
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: pycbcc-sdist
+          name: pycbcc-${{ inputs.version }}-sdist
       - name: Extract sdist source
         run: |
           ls -alh
@@ -191,12 +197,27 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
+      - name: Downgrade CMake
+        run: |
+          brew uninstall cmake
+          mkdir ~/Downloads/CMake
+          curl --silent --location --retry 3 "https://github.com/Kitware/CMake/releases/download/v3.28.1/cmake-3.28.1-macos-universal.dmg" --output ~/Downloads/CMake/cmake-Darwin-x86_64.dmg
+          yes | PAGER=cat hdiutil attach -quiet -mountpoint /Volumes/cmake-Darwin-x86_64 ~/Downloads/CMake/cmake-Darwin-x86_64.dmg
+          cp -R /Volumes/cmake-Darwin-x86_64/CMake.app /Applications/
+          hdiutil detach /Volumes/cmake-Darwin-x86_64
+          sudo "/Applications/CMake.app/Contents/bin/cmake-gui" --install=/usr/local/bin
       - name: Build wheel
         run: |
           mkdir bdist
-          PYCBCC_BUILD_TYPE=RelWithDebInfo PYCBCC_USE_OPENSSL=off python -m pip wheel . --no-deps -w bdist -v -v -v
+          python -m pip wheel . --no-deps -w bdist -v -v -v
         env:
+          PYCBCC_BUILD_TYPE: RelWithDebInfo
+          PYCBCC_USE_OPENSSL: OFF
+          PYCBCC_VERBOSE_MAKEFILE: ON
           MACOSX_DEPLOYMENT_TARGET: "10.15"
+          ARCHFLAGS: '"-arch x86_64"'
+          CMAKE_OSX_ARCHITECTURES: x86_64
+          _PYTHON_HOST_PLATFORM: macosx-10.15-x86_64
       - name: Reduce wheel size
         id: reduce_wheel_size
         run: |
@@ -212,6 +233,7 @@ jobs:
           cd ../../..
           python -m wheel pack $WHEEL_NAME
           ls -alh
+          WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
           echo "wheel_name=${WHEEL_NAME}" >> "$GITHUB_OUTPUT"
         env:
           PYCBCC_VERSION: ${{ inputs.version }}
@@ -220,18 +242,18 @@ jobs:
           retention-days: 1
           name: ${{ steps.reduce_wheel_size.outputs.wheel_name }}
           path: |
-            ./bdist/*.whl
+            ./bdist/${{ steps.reduce_wheel_size.outputs.wheel_name }}
 
   macos_arm64_wheel:
     runs-on: macos-14
     strategy:
       matrix:
-        python-version: ["3.9"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
     needs: sdist
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: pycbcc-sdist
+          name: pycbcc-${{ inputs.version }}-sdist
       - name: Extract sdist source
         run: |
           ls -alh
@@ -253,9 +275,15 @@ jobs:
       - name: Build wheel
         run: |
           mkdir bdist
-          PYCBCC_BUILD_TYPE=RelWithDebInfo PYCBCC_USE_OPENSSL=off python -m pip wheel . --no-deps -w bdist -v -v -v
+          python -m pip wheel . --no-deps -w bdist -v -v -v
         env:
+          PYCBCC_BUILD_TYPE: RelWithDebInfo
+          PYCBCC_USE_OPENSSL: OFF
+          PYCBCC_VERBOSE_MAKEFILE: ON
           MACOSX_DEPLOYMENT_TARGET: "11.0"
+          ARCHFLAGS: '"-arch arm64"'
+          CMAKE_OSX_ARCHITECTURES: arm64
+          _PYTHON_HOST_PLATFORM: macosx-11-arm64
       - name: Reduce wheel size
         id: reduce_wheel_size
         run: |
@@ -271,6 +299,7 @@ jobs:
           cd ../../..
           python -m wheel pack $WHEEL_NAME
           ls -alh
+          WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
           echo "wheel_name=${WHEEL_NAME}" >> "$GITHUB_OUTPUT"
         env:
           PYCBCC_VERSION: ${{ inputs.version }}
@@ -279,4 +308,4 @@ jobs:
           retention-days: 1
           name: ${{ steps.reduce_wheel_size.outputs.wheel_name }}
           path: |
-            ./bdist/${{ steps.reduce_wheel_size.outputs.wheel_name }}.whl
+            ./bdist/${{ steps.reduce_wheel_size.outputs.wheel_name }}

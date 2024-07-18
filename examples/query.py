@@ -6,9 +6,11 @@ from couchbase_columnar.options import (ClusterOptions,
 
 
 def main() -> None:
-    connstr = 'couchbases://cb.mqc-5fcvbwo9jxi.customsubdomain.nonprod-project-avengers.com'
-    username = 'testuser'
-    pw = 'P@ssw0rd_12345!'
+    # Update this to your cluster
+    connstr = 'couchbases://--your-instance--'
+    username = 'username'
+    pw = 'Password!123'
+    # User Input ends here.
 
     cred = Credential.from_username_and_password(username, pw)
     # Configure a secure connection to a Couchbase internal pre-production cluster.
