@@ -9,7 +9,16 @@ The Columnar SDK supports static typing.  Currently only [mypy](https://github.c
 
 # Installing the SDK<a id="installing-the-sdk"></a>
 
-A select set of wheels are available on the [Releases page](https://github.com/couchbaselabs/columnar-python-client/releases).  If a wheel is not available for your specific Python version and/or platform, see the [BUILDING page](https://github.com/couchbaselabs/columnar-python-client/blob/main/BUILDING.md) for details on how to build the client's binary.
+Eventually the SDK will be published to PyPI, but in the interim a select set of wheels are available on the [Releases page](https://github.com/couchbaselabs/columnar-python-client/releases).  If a wheel is not available for your specific Python version and/or platform, see the [BUILDING page](https://github.com/couchbaselabs/columnar-python-client/blob/main/BUILDING.md) for details on how to build the SDK's binary.
+
+To install the SDK from a wheel on the [Releases page](https://github.com/couchbaselabs/columnar-python-client/releases):
+1. Download the appropriate wheel
+2. Unzip the downloaded file
+3. Install via pip: `python3 -m pip install <path to unzipped wheel>`
+
+If a compatible wheel is not available, the SDK's binary will need to be built from source:
+1. Follow the steps on the [BUILDING page](https://github.com/couchbaselabs/columnar-python-client/blob/main/BUILDING.md)
+2. After the build succeeds, the SDK can be used by running Python scripts from within the cloned repository or the SDK can be installed via pip: `python3 -m pip install <path to cloned repository>`
 
 # Using the SDK<a id="using-the-sdk"></a>
 
