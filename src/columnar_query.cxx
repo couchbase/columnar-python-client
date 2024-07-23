@@ -115,9 +115,19 @@ build_query_options(PyObject* pyObj_query_args)
     if (PyUnicode_Check(pyObj_statement)) {
       options.statement = std::string(PyUnicode_AsUTF8(pyObj_statement));
     } else {
-      PyErr_SetString(PyExc_ValueError, "Analtyics query statement is not a string.");
+      PyErr_SetString(PyExc_ValueError, "Columnar query statement is not a string.");
       return {};
     }
+  }
+
+  PyObject* pyObj_database_name = PyDict_GetItemString(pyObj_query_args, "database_name");
+  if (pyObj_database_name != nullptr) {
+    options.database_name = std::string(PyUnicode_AsUTF8(pyObj_database_name));
+  }
+
+  PyObject* pyObj_scope_name = PyDict_GetItemString(pyObj_query_args, "scope_name");
+  if (pyObj_scope_name != nullptr) {
+    options.scope_name = std::string(PyUnicode_AsUTF8(pyObj_scope_name));
   }
 
   PyObject* pyObj_priority = PyDict_GetItemString(pyObj_query_args, "priority");
@@ -285,16 +295,13 @@ build_query_options(PyObject* pyObj_query_args)
 PyObject*
 handle_columnar_query([[maybe_unused]] PyObject* self, PyObject* args, PyObject* kwargs)
 {
-  // need these for all operations
   PyObject* pyObj_conn = nullptr;
   PyObject* pyObj_query_args = nullptr;
-  std::uint64_t streaming_timeout_us = 0;
   PyObject* pyObj_callback = nullptr;
   PyObject* pyObj_row_callback = nullptr;
 
-  static const char* kw_list[] = { "conn",     "query_args",   "streaming_timeout",
-                                   "callback", "row_callback", nullptr };
-  const char* kw_format = "O!|OKOO";
+  static const char* kw_list[] = { "conn", "query_args", "callback", "row_callback", nullptr };
+  const char* kw_format = "O!|OOO";
   int ret = PyArg_ParseTupleAndKeywords(args,
                                         kwargs,
                                         kw_format,
@@ -302,7 +309,6 @@ handle_columnar_query([[maybe_unused]] PyObject* self, PyObject* args, PyObject*
                                         &PyCapsule_Type,
                                         &pyObj_conn,
                                         &pyObj_query_args,
-                                        &streaming_timeout_us,
                                         &pyObj_callback,
                                         &pyObj_row_callback);
   if (!ret) {

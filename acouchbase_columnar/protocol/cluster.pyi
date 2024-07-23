@@ -19,6 +19,7 @@ from typing import overload
 from typing_extensions import Unpack
 
 from acouchbase_columnar.protocol.core.client_adapter import _ClientAdapter
+from acouchbase_columnar.protocol.database import AsyncDatabase
 from couchbase_columnar.common.credential import Credential
 from couchbase_columnar.common.result import AsyncQueryResult
 from couchbase_columnar.options import (ClusterOptions,
@@ -84,6 +85,8 @@ class AsyncCluster:
     def connected(self) -> bool: ...
 
     def close(self) -> None: ...
+
+    def database(self, name: str) -> AsyncDatabase: ...
 
     @overload
     async def execute_query(self, statement: str) -> AsyncQueryResult: ...

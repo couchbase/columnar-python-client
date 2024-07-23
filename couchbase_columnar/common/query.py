@@ -86,7 +86,7 @@ class QueryMetrics:
         """Get the total number of bytes which were generated as part of the result set.
 
         Returns:
-            :class:`~couchbase.options.UnsignedInt64`: The total number of bytes which were generated as part of the result set.
+            int: The total number of bytes which were generated as part of the result set.
         """  # noqa: E501
         return self._raw.get('result_size') or 0
 
@@ -94,7 +94,7 @@ class QueryMetrics:
         """Get the total number of errors which were encountered during the execution of the query.
 
         Returns:
-            :class:`~couchbase.options.UnsignedInt64`: The total number of errors which were encountered during the execution of the query.
+            int: The total number of errors which were encountered during the execution of the query.
         """  # noqa: E501
         return self._raw.get('error_count') or 0
 
@@ -102,7 +102,7 @@ class QueryMetrics:
         """Get the total number of warnings which were encountered during the execution of the query.
 
         Returns:
-            :class:`~couchbase.options.UnsignedInt64`: The total number of warnings which were encountered during the execution of the query.
+            int: The total number of warnings which were encountered during the execution of the query.
         """  # noqa: E501
         return self._raw.get('warning_count') or 0
 
