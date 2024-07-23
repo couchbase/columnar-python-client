@@ -37,7 +37,7 @@ class _Certificates:
         nonprod_cert_dir = Path(Path(__file__).resolve().parent, 'nonprod_certificates')
         nonprod_certs: List[str] = []
         for cert in nonprod_cert_dir.iterdir():
-            if os.path.isdir(cert):
+            if os.path.isdir(cert) or cert.suffix != '.pem':
                 continue
             nonprod_certs.append(cert.read_text())
         return nonprod_certs

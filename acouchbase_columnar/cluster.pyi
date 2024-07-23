@@ -18,6 +18,7 @@ from typing import overload
 
 from typing_extensions import Unpack
 
+from acouchbase_columnar.database import AsyncDatabase
 from couchbase_columnar.credential import Credential
 from couchbase_columnar.options import (ClusterOptions,
                                         ClusterOptionsKwargs,
@@ -75,6 +76,8 @@ class AsyncCluster:
                  options: ClusterOptions,
                  loop: AbstractEventLoop,
                  **kwargs: Unpack[ClusterOptionsKwargs]) -> None: ...
+
+    def database(self, database_name: str) -> AsyncDatabase: ...
 
     @overload
     async def execute_query(self, statement: str) -> AsyncQueryResult: ...

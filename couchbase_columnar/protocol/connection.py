@@ -150,15 +150,6 @@ class _ConnectionDetails:
     cluster_options: ClusterOptionsTransformedKwargs
     credential: Dict[str, str]
     default_deserializer: Deserializer
-    streaming_timeouts: Optional[StreamingTimeouts] = None
-
-    def set_streaming_timeouts(self) -> _ConnectionDetails:
-        if self.cluster_options is not None:
-            timeout_options = self.cluster_options.get('timeout_options') or {}
-            self.streaming_timeouts = {
-                'query_timeout': timeout_options.get('query_timeout')
-            }
-        return self
 
     # TODO:  is this needed?  If so, need to flesh out the validation matrix
     def validate_security_options(self) -> None:
@@ -196,6 +187,6 @@ class _ConnectionDetails:
         conn_dtls = cls(connection_str,
                         cluster_opts,
                         credential.asdict(),
-                        default_deserializer).set_streaming_timeouts()
+                        default_deserializer)
         conn_dtls.validate_security_options()
         return conn_dtls

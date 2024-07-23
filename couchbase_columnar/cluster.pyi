@@ -18,6 +18,7 @@ from typing import overload
 from typing_extensions import Unpack
 
 from couchbase_columnar.credential import Credential
+from couchbase_columnar.database import Database
 from couchbase_columnar.options import (ClusterOptions,
                                         ClusterOptionsKwargs,
                                         QueryOptions,
@@ -46,6 +47,8 @@ class Cluster:
                  credential: Credential,
                  options: ClusterOptions,
                  **kwargs: Unpack[ClusterOptionsKwargs]) -> None: ...
+
+    def database(self, name: str) -> Database: ...
 
     @overload
     def execute_query(self, statement: str) -> BlockingQueryResult: ...

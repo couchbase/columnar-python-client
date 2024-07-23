@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
+from couchbase_columnar.database import Database
 from couchbase_columnar.result import BlockingQueryResult
 
 if TYPE_CHECKING:
@@ -32,6 +33,21 @@ class Cluster:
                  **kwargs: object) -> None:
         from couchbase_columnar.protocol.cluster import Cluster as _Cluster
         self._impl = _Cluster(connstr, credential, options, **kwargs)
+
+    def database(self, name: str) -> Database:
+        """Creates a database instance.
+
+        .. seealso::
+            :class:`.database.Database`
+
+        Args:
+            name (str): Name of the database
+
+        Returns:
+            :class:`~couchbase_columnar.database.Database`: A database instance
+
+        """
+        return Database(self._impl, name)
 
     def execute_query(self, statement: str, *args: object, **kwargs: object) -> BlockingQueryResult:
         return self._impl.execute_query(statement, *args, **kwargs)

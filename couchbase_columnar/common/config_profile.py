@@ -47,9 +47,8 @@ class ConfigProfile(ABC):
         Apply the provided options to ClusterOptions. This method will need to be implemented in derived classes.
 
         Args:
-            options (:class:`~couchbase.options.ClusterOptions`): The options the profile will apply toward.
+            options (:class:`~couchbase_columnar.options.ClusterOptions`): The options the profile will apply toward.
         """
-        pass
 
 
 class WanDevelopmentProfile(ConfigProfile):
@@ -92,12 +91,12 @@ class ConfigProfiles():
 
         Args:
             profile_name (str):  The name of the profile to apply.
-            options (:class:`~couchbase.options.ClusterOptions`): The options to apply the ConfigProfile options
+            options (:class:`~couchbase_columnar.options.ClusterOptions`): The options to apply the ConfigProfile options
                 toward. The ConfigProfile options will override any matching option(s) previously set.
 
         Raises:
-            :class:`~couchbase.exceptions.InvalidArgumentException`: If the specified profile is not registered.
-        """
+            :class:`~couchbase_columnar.exceptions.InvalidArgumentException`: If the specified profile is not registered.
+        """  # noqa: E501
         if profile_name not in self._profiles:
             raise InvalidArgumentException(f'{profile_name} is not a registered profile.')
 
@@ -107,18 +106,18 @@ class ConfigProfiles():
         """
         **VOLATILE** This API is subject to change at any time.
 
-        Register a :class:`~couchbase.options.ConfigProfile`.
+        Register a :class:`~couchbase_columnar.options.ConfigProfile`.
 
         Args:
-            profile_name (str):  The name of the :class:`~couchbase.options.ConfigProfile` to register.
-            profile (:class:`~couchbase.options.ConfigProfile`): The :class:`~couchbase.options.ConfigProfile`
+            profile_name (str):  The name of the :class:`~couchbase_columnar.options.ConfigProfile` to register.
+            profile (:class:`~couchbase_columnar.options.ConfigProfile`): The :class:`~couchbase_columnar.options.ConfigProfile`
                 to register.
 
         Raises:
-            :class:`~couchbase.exceptions.InvalidArgumentException`: If the specified profile is not derived
-            from :class:`~couchbase.options.ConfigProfile`.
+            :class:`~couchbase_columnar.exceptions.InvalidArgumentException`: If the specified profile is not derived
+            from :class:`~couchbase_columnar.options.ConfigProfile`.
 
-        """
+        """  # noqa: E501
         if not issubclass(profile.__class__, ConfigProfile):
             raise InvalidArgumentException('A Configuration Profile must be derived from ConfigProfile')
 
@@ -128,13 +127,13 @@ class ConfigProfiles():
         """
         **VOLATILE** This API is subject to change at any time.
 
-        Unregister a :class:`~couchbase.options.ConfigProfile`.
+        Unregister a :class:`~couchbase_columnar.options.ConfigProfile`.
 
         Args:
-            profile_name (str):  The name of the :class:`~couchbase.options.ConfigProfile` to unregister.
+            profile_name (str):  The name of the :class:`~couchbase_columnar.options.ConfigProfile` to unregister.
 
         Returns
-            Optional(:class:`~couchbase.options.ConfigProfile`): The unregistered :class:`~couchbase.options.ConfigProfile`
+            Optional(:class:`~couchbase_columnar.options.ConfigProfile`): The unregistered :class:`~couchbase_columnar.options.ConfigProfile`
         """  # noqa: E501
 
         return self._profiles.pop(profile_name, None)

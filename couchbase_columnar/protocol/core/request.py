@@ -63,9 +63,8 @@ class QueryRequest:
     statement: str
     deserializer: Deserializer
     options: Optional[QueryOptionsTransformedKwargs] = None
-
-    # extra not w/in QueryOptions
-    streaming_timeout: Optional[int] = None
+    database_name: Optional[str] = None
+    scope_name: Optional[str] = None
 
     def to_req_dict(self) -> Dict[str, Any]:
         req_dict = {k: v for k, v in asdict(self).items() if v is not None}
@@ -88,14 +87,6 @@ class QueryRequest:
                 req_dict[opt_key] = opt_val
 
         final_req = {}
-        # if 'callback' in req_dict:
-        #     final_req['callback'] = req_dict.pop('callback')
-        # if 'errback' in req_dict:
-        #     final_req['errback'] = req_dict.pop('errback')
-        # if 'row_callback' in req_dict:
-        #     final_req['row_callback'] = req_dict.pop('row_callback')
-        if 'streaming_timeout' in req_dict:
-            final_req['streaming_timeout'] = req_dict.pop('streaming_timeout')
         final_req['query_args'] = req_dict
         return final_req
 
@@ -153,11 +144,76 @@ class ClusterRequestBuilder:
         # add the default serializer if one does not exist
         deserializer = q_opts.pop('deserializer', None) or self._conn_details.default_deserializer
 
-        timeout = q_opts.get('timeout')
-        if timeout is None and self._conn_details.streaming_timeouts is not None:
-            streaming_timeout = self._conn_details.streaming_timeouts.get('query_timeout')
-        else:
-            streaming_timeout = timeout
+        final_opts = {}
+        for k, v in q_opts.items():
+            if k != 'deserializer':
+                final_opts[k] = v
+
+        return QueryRequest(statement,
+                            deserializer,
+                            options=q_opts)
+
+    @staticmethod
+    def to_req_dict(request: ClusterRequest) -> Dict[str, Any]:
+        req_dict = asdict(request)
+        # always handle callbacks
+        callback = req_dict.pop('callback', None)
+        errback = req_dict.pop('errback', None)
+
+        # we don't want the callback/errback in the request if it doesn't exist
+        if callback:
+            req_dict['callback'] = callback
+        if errback:
+            req_dict['errback'] = errback
+
+        return req_dict
+
+
+class ScopeRequestBuilder:
+
+    def __init__(self,
+                 client: Union[AsyncClientAdapter, BlockingClientAdapter],
+                 database_name: str,
+                 scope_name: str) -> None:
+        self._conn_details = client.connection_details
+        self._opts_builder = client.options_builder
+        self._database_name = database_name
+        self._scope_name = scope_name
+
+    def build_query_request(self,  # noqa: C901
+                            statement: str,
+                            *args: object,
+                            **kwargs: object) -> QueryRequest:  # noqa: C901
+        # default if no options provided
+        opts = QueryOptions()
+        args_list = list(args)
+        for arg in args_list:
+            if isinstance(arg, QueryOptions):
+                # we have options passed in
+                opts = arg
+                args_list.remove(arg)
+
+        # need to pop out named params prior to sending options to the builder
+        named_param_keys = list(filter(lambda k: k not in QueryOptions.VALID_OPTION_KEYS, kwargs.keys()))
+        named_params = {}
+        for key in named_param_keys:
+            named_params[key] = kwargs.pop(key)
+
+        q_opts = self._opts_builder.build_options(QueryOptions,
+                                                  QueryOptionsTransformedKwargs,
+                                                  kwargs,
+                                                  opts)
+        # positional params and named params passed in outside of QueryOptions serve as overrides
+        if args_list and len(args_list) > 0:
+            q_opts['positional_parameters'] = args_list
+        if named_params and len(named_params) > 0:
+            q_opts['named_parameters'] = named_params
+        # metrics default to True
+        if 'metrics' not in q_opts:
+            q_opts['metrics'] = True
+        # add the default serializer if one does not exist
+        deserializer = q_opts.pop('deserializer', None) or self._conn_details.default_deserializer
+
         final_opts = {}
         for k, v in q_opts.items():
             if k != 'deserializer':
@@ -166,7 +222,8 @@ class ClusterRequestBuilder:
         return QueryRequest(statement,
                             deserializer,
                             options=q_opts,
-                            streaming_timeout=streaming_timeout)
+                            database_name=self._database_name,
+                            scope_name=self._scope_name)
 
     @staticmethod
     def to_req_dict(request: ClusterRequest) -> Dict[str, Any]:

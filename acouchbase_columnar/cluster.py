@@ -23,6 +23,7 @@ if sys.version_info < (3, 10):
 else:
     from typing import TypeAlias
 
+from acouchbase_columnar.database import AsyncDatabase
 from couchbase_columnar.result import AsyncQueryResult
 
 if TYPE_CHECKING:
@@ -41,6 +42,21 @@ class AsyncCluster:
                  **kwargs: object) -> None:
         from acouchbase_columnar.protocol.cluster import AsyncCluster as _AsyncCluster
         self._impl = _AsyncCluster(connstr, credential, options, **kwargs)
+
+    def database(self, name: str) -> AsyncDatabase:
+        """Creates a database instance.
+
+        .. seealso::
+            :class:`.database.AsyncDatabase`
+
+        Args:
+            name (str): Name of the database
+
+        Returns:
+            :class:`~acouchbase_columnar.database.AsyncDatabase`: A database instance
+
+        """
+        return AsyncDatabase(self._impl, name)
 
     async def execute_query(self, statement: str, *args: object, **kwargs: object) -> AsyncQueryResult:
         return await self._impl.execute_query(statement, *args, **kwargs)

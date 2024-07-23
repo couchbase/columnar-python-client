@@ -44,7 +44,6 @@ class _QueryStreamingExecutor(StreamingExecutor):
                  request: QueryRequest) -> None:
         self._client = client
         self._request = request
-        # self._streamed_result: Optional[CoreStreamedResult] = None
         self._query_iter: Optional[CoreQueryIterator] = None
         self._started_streaming = False
         self._deserializer = request.deserializer
@@ -77,13 +76,10 @@ class _QueryStreamingExecutor(StreamingExecutor):
         raise excptn
 
     def set_metadata(self) -> None:
-        # if self._streamed_result is None:
-        #     return
         if self._query_iter is None:
             return
 
         try:
-            # query_response = next(self._streamed_result)
             query_metadata = self._query_iter.metadata()
         except ColumnarException as ex:
             raise ex
@@ -103,7 +99,6 @@ class _QueryStreamingExecutor(StreamingExecutor):
         if self._done_streaming:
             return
         self._started_streaming = True
-        # self._streamed_result = self._client.query_op(self._request)
         res = self._client.columnar_query_op(self._request)
         if isinstance(res, CoreColumnarException):
             raise ErrorMapper.build_exception(res)
@@ -113,16 +108,9 @@ class _QueryStreamingExecutor(StreamingExecutor):
         self._query_iter = res
 
     def get_next_row(self) -> Any:
-        # if self._done_streaming is True or self._streamed_result is None:
-        #     return
         if self._done_streaming is True or self._query_iter is None:
             return
 
-        # try:
-        #     row = next(self._streamed_result)
-        # except StopIteration:
-        #     # @TODO:  PYCBC-1524
-        #     row = next(self._streamed_result)
         row = next(self._query_iter)
         if isinstance(row, CoreColumnarException):
             raise ErrorMapper.build_exception(row)

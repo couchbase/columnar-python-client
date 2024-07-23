@@ -12,3 +12,18 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
+from couchbase_columnar.protocol.cluster import Cluster as Cluster
+from couchbase_columnar.protocol.core.client_adapter import _ClientAdapter
+from couchbase_columnar.protocol.scope import Scope
+
+class Database:
+    def __init__(self, cluster: Cluster, database_name: str) -> None: ...
+
+    @property
+    def client_adapter(self) -> _ClientAdapter: ...
+
+    @property
+    def name(self) -> str: ...
+
+    def scope(self, scope_name: str) -> Scope: ...

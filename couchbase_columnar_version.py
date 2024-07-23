@@ -59,13 +59,13 @@ class VersionInfo:
 
         # Per PEP-440, replace any 'DP' with an 'a', and any beta with 'b'
         if self.ver_extra:
-            self.ver_extra = re.sub(r'^dp', 'a', self.ver_extra, count=1)
+            self.ver_extra = re.sub(r'^dp', 'dev', self.ver_extra, count=1)
             self.ver_extra = re.sub(r'^alpha', 'a', self.ver_extra, count=1)
             self.ver_extra = re.sub(r'^beta', 'b', self.ver_extra, count=1)
-            m = re.search(r'^([ab]|dev|rc|post)(\d+)?', self.ver_extra)
+            m = re.search(r'^([ab]|dev|rc|post)\.?(\d+)?', self.ver_extra)
             if m is not None:
                 if m.group(1) in ["dev", "post"]:
-                    self.ver_extra = "." + self.ver_extra
+                    self.ver_extra = "." + self.ver_extra.replace('.', '')
                 if m.group(2) is None:
                     # No suffix, then add the number
                     first = self.ver_extra[0]
@@ -96,7 +96,10 @@ class VersionInfo:
         """Returns the well formed PEP-440 version"""
         vbase = self.base_version
         if self.ncommits:
-            vbase += '.dev{0}+{1}'.format(self.ncommits, self.sha)
+            if self.ver_extra:
+                vbase += f'+{self.sha}'
+            else:
+                vbase += f'.dev{self.ncommits}+{self.sha}'
         return vbase
 
 

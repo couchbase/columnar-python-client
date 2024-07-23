@@ -51,7 +51,7 @@ class BlockingQueryResult(QueryResult):
         """The meta-data which has been returned by the query.
 
         Returns:
-            :class:`~couchbase.query.QueryMetaData`: An instance of :class:`~couchbase.query.QueryMetaData`.
+            :class:`~couchbase_columnar.query.QueryMetaData`: An instance of :class:`~couchbase_columnar.query.QueryMetaData`.
         """  # noqa: E501
         return self._executor.get_metadata()
 
@@ -96,7 +96,7 @@ class AsyncQueryResult(QueryResult):
         """The meta-data which has been returned by the query.
 
         Returns:
-            :class:`~couchbase.query.QueryMetaData`: An instance of :class:`~couchbase.query.QueryMetaData`.
+            :class:`~couchbase_columnar.query.QueryMetaData`: An instance of :class:`~couchbase_columnar.query.QueryMetaData`.
         """  # noqa: E501
         return self._executor.get_metadata()
 

@@ -46,7 +46,7 @@ class ClusterOptions(ClusterOptionsBase):
     """Available options to set when creating a cluster.
 
     Cluster options enable the configuration of various global cluster settings.
-    Some options can be set globally for the cluster, but overridden for specific operations (i.e. :class:`~couchbase.options.ClusterTimeoutOptions`).
+    Some options can be set globally for the cluster, but overridden for specific operations (i.e. :class:`~couchbase_columnar.options.ClusterTimeoutOptions`).
     Most options are optional, values in parenthesis indicate C++ core default that will be used.
 
     .. note::
@@ -57,7 +57,7 @@ class ClusterOptions(ClusterOptionsBase):
         allow_unknown_qstr_options (bool, optional): If enabled, allows unknown query string options to pass through to C++ core. Defaults to `False` (disabled).
         config_poll_floor (timedelta, optional): Set to configure polling floor interval. Defaults to `None` (50ms).
         config_poll_interval (timedelta, optional): Set to configure polling floor interval. Defaults to `None` (2.5s).
-        deserializer (Deserializer, optional): Set to configure global serializer to translate JSON to Python objects. Defaults to `None` (:class:`~couchbase.deserializer.DefaultJsonDeserializer`).
+        deserializer (Deserializer, optional): Set to configure global serializer to translate JSON to Python objects. Defaults to `None` (:class:`~couchbase_columnar.deserializer.DefaultJsonDeserializer`).
         disable_mozilla_ca_certificates (bool, optional): If enabled, prevents the C++ core from loading Mozilla certificates. Defaults to `False` (disabled).
         dns_nameserver (str, optional): **VOLATILE** This API is subject to change at any time. Set to configure custom DNS nameserver. Defaults to `None`.
         dns_port (int, optional): **VOLATILE** This API is subject to change at any time. Set to configure custom DNS port. Defaults to `None`.
@@ -71,9 +71,9 @@ class ClusterOptions(ClusterOptionsBase):
         log_redaction (bool, optional): **NOTE:** Currently a no-op. If enabled, allows log redaction. Defaults to `False` (disabled).
         network (str, optional): Set to configure external network. Defaults to `None` (auto).
         security_options (SecurityOptions, optional): Security options for SDK connection.
-        timeout_options (TimeoutOptions, optional): Timeout options for various SDK operations. See :class:`~couchbase.options.ClusterTimeoutOptions` for details.
+        timeout_options (TimeoutOptions, optional): Timeout options for various SDK operations. See :class:`~couchbase_columnar.options.ClusterTimeoutOptions` for details.
         tls_verify (Union[TLSVerifyMode, str], optional): Set to configure TLS verify mode. Defaults to `None` (peer).
-        tracing_options (TracingOptions, optional): Tracing options for SDK tracing bevavior. Ignored if `tracer` option is set. See :class:`~couchbase.options.ClusterTracingOptions` for details.
+        tracing_options (TracingOptions, optional): Tracing options for SDK tracing bevavior. Ignored if `tracer` option is set. See :class:`~couchbase_columnar.options.ClusterTracingOptions` for details.
         user_agent_extra (str, optional): Set to add further details to identification fields in server protocols. Defaults to `None` (`{Python SDK version} (python/{Python version})`).
     """  # noqa: E501
 
@@ -84,12 +84,11 @@ class ClusterOptions(ClusterOptionsBase):
         Apply the provided ConfigProfile options.
 
         Args:
-            profile_name ([:class:`~couchbase.options.KnownConfigProfiles`, str]):  The name of the profile to apply
+            profile_name ([:class:`~couchbase_columnar.options.KnownConfigProfiles`, str]):  The name of the profile to apply
                 toward ClusterOptions.
-            authenticator (Union[:class:`~couchbase.auth.PasswordAuthenticator`, :class:`~couchbaes.auth.CertificateAuthenticator`]): An authenticator instance.
 
         Raises:
-            :class:`~couchbase.exceptions.InvalidArgumentException`: If the specified profile is not registered.
+            :class:`~couchbase_columnar.exceptions.InvalidArgumentException`: If the specified profile is not registered.
 
         """  # noqa: E501
         prof_name = profile_name.value if isinstance(profile_name, KnownConfigProfiles) else profile_name
@@ -103,10 +102,10 @@ class ClusterOptions(ClusterOptionsBase):
         Create a ClusterOptions instance and apply the provided ConfigProfile options.
 
         Args:
-            profile_name ([:class:`~couchbase.options.KnownConfigProfiles`, str]):  The name of the profile to apply toward ClusterOptions.
+            profile_name ([:class:`~couchbase_columnar.options.KnownConfigProfiles`, str]):  The name of the profile to apply toward ClusterOptions.
 
         Raises:
-            :class:`~couchbase.exceptions.InvalidArgumentException`: If the specified profile is not registered.
+            :class:`~couchbase_columnar.exceptions.InvalidArgumentException`: If the specified profile is not registered.
 
         """  # noqa: E501
         opts = cls()
@@ -139,7 +138,7 @@ class SecurityOptions(SecurityOptionsBase):
         Convenience method that returns `SecurityOptions` instance with `trust_only_capella=True`.
 
         Returns:
-            :class:`~couchbase.common.options.SecurityOptions`
+            :class:`~couchbase_columnar.common.options.SecurityOptions`
         """
         return cls(trust_only_capella=True)
 
@@ -152,7 +151,7 @@ class SecurityOptions(SecurityOptionsBase):
             pem_file (str): Path to PEM-encoded certificate(s) the SDK should trust.
 
         Returns:
-            :class:`~couchbase.common.options.SecurityOptions`
+            :class:`~couchbase_columnar.common.options.SecurityOptions`
         """  # noqa: E501
         return cls(trust_only_pem_file=pem_file)
 
@@ -165,7 +164,7 @@ class SecurityOptions(SecurityOptionsBase):
             pem_str (str): PEM-encoded certificate(s) the SDK should trust.
 
         Returns:
-            :class:`~couchbase.common.options.SecurityOptions`
+            :class:`~couchbase_columnar.common.options.SecurityOptions`
         """  # noqa: E501
         return cls(trust_only_pem_str=pem_str)
 
@@ -178,7 +177,7 @@ class SecurityOptions(SecurityOptionsBase):
             trust_only_certificates (List[str]): List of PEM-encoded certificate(s) the SDK should trust.
 
         Returns:
-            :class:`~couchbase.common.options.SecurityOptions`
+            :class:`~couchbase_columnar.common.options.SecurityOptions`
         """  # noqa: E501
         return cls(trust_only_certificates=certificates)
 
@@ -188,7 +187,7 @@ class SecurityOptions(SecurityOptionsBase):
         Convenience method that returns `SecurityOptions` instance with `trust_only_platform=True`.
 
         Returns:
-            :class:`~couchbase.common.options.SecurityOptions`
+            :class:`~couchbase_columnar.common.options.SecurityOptions`
         """
         return cls(trust_only_platform=True)
 

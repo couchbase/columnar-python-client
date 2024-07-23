@@ -21,59 +21,6 @@
 #include "utils.hxx"
 #include <core/columnar/query_result.hxx>
 #include <core/scan_result.hxx>
-#include <queue>
-
-template<class T>
-class rows_queue
-{
-public:
-  rows_queue()
-    : rows_()
-    , mut_()
-    , cv_()
-  {
-  }
-
-  ~rows_queue()
-  {
-  }
-
-  void put(T row)
-  {
-    std::lock_guard<std::mutex> lock(mut_);
-    rows_.push(row);
-    cv_.notify_one();
-  }
-
-  T get(std::chrono::milliseconds timeout_ms)
-  {
-    std::unique_lock<std::mutex> lock(mut_);
-
-    while (rows_.empty()) {
-      auto now = std::chrono::system_clock::now();
-      if (cv_.wait_until(lock, now + timeout_ms) == std::cv_status::timeout) {
-        // this will cause iternext to return nullptr, which stops iteration
-        return nullptr;
-      }
-    }
-
-    auto row = rows_.front();
-    rows_.pop();
-    return row;
-  }
-
-  int size()
-  {
-    std::lock_guard<std::mutex> lock(mut_);
-    return rows_.size();
-  }
-
-private:
-  std::queue<T> rows_;
-  std::mutex mut_;
-  bool cancel_streaming_{ false };
-  std::condition_variable cv_;
-};
 
 struct result {
   PyObject_HEAD PyObject* dict;
@@ -85,28 +32,6 @@ pycbcc_result_type_init(PyObject** ptr);
 
 PyObject*
 create_result_obj();
-
-// struct mutation_token {
-//   PyObject_HEAD couchbase::mutation_token* token;
-// };
-
-// int
-// pycbcc_mutation_token_type_init(PyObject** ptr);
-
-// PyObject*
-// create_mutation_token_obj(struct couchbase::mutation_token mt);
-
-// struct streamed_result {
-//   PyObject_HEAD std::error_code ec;
-//   std::shared_ptr<rows_queue<PyObject*>> rows;
-//   std::chrono::milliseconds timeout_ms{};
-// };
-
-// int
-// pycbcc_streamed_result_type_init(PyObject** ptr);
-
-// streamed_result*
-// create_streamed_result_obj(std::chrono::milliseconds timeout_ms);
 
 struct columnar_query_iterator {
   PyObject_HEAD std::shared_ptr<couchbase::core::columnar::query_result> query_result_;

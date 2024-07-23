@@ -77,9 +77,9 @@ class _LoopValidator:
 
 def get_event_loop(evloop: Optional[AbstractEventLoop] = None) -> AbstractEventLoop:
     """
-    Get an event loop compatible with acouchbase.
+    Get an event loop compatible with acouchbase_columnar.
     Some Event loops, such as ProactorEventLoop (the default asyncio event
-    loop for Python 3.8 on Windows) are not compatible with acouchbase as
+    loop for Python 3.8 on Windows) are not compatible with acouchbase_columnar as
     they don't implement all members in the abstract base class.
 
     :param evloop: preferred event loop
