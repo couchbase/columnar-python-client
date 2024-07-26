@@ -15,10 +15,12 @@ To install the SDK from a wheel on the [Releases page](https://github.com/couchb
 1. Download the appropriate wheel
 2. Unzip the downloaded file
 3. Install via pip: `python3 -m pip install <path to unzipped wheel>`
+4. Install the `typing-extensions` dependency: `python3 -m pip install typing-extensions`
 
 If a compatible wheel is not available, the SDK's binary will need to be built from source:
 1. Follow the steps on the [BUILDING page](https://github.com/couchbaselabs/columnar-python-client/blob/main/BUILDING.md)
 2. After the build succeeds, the SDK can be used by running Python scripts from within the cloned repository or the SDK can be installed via pip: `python3 -m pip install <path to cloned repository>`
+4. Install the `typing-extensions` dependency: `python3 -m pip install typing-extensions`
 
 # Using the SDK<a id="using-the-sdk"></a>
 
