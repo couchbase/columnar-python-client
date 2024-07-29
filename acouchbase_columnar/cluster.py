@@ -61,6 +61,9 @@ class AsyncCluster:
     async def execute_query(self, statement: str, *args: object, **kwargs: object) -> AsyncQueryResult:
         return await self._impl.execute_query(statement, *args, **kwargs)
 
+    def close(self) -> None:
+        return self._impl.close()
+
     @classmethod
     def create_instance(cls,
                         connstr: str,
