@@ -36,6 +36,9 @@ class Cluster:
     def execute_query(self, statement: str, *args: object, **kwargs: object) -> BlockingQueryResult:
         return self._impl.execute_query(statement, *args, **kwargs)
 
+    def close(self) -> None:
+        return self._impl.close()
+
     @classmethod
     def create_instance(cls,
                         connstr: str,
