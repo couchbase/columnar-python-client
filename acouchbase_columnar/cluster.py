@@ -41,7 +41,7 @@ class AsyncCluster:
                  loop: Optional[AbstractEventLoop] = None,
                  **kwargs: object) -> None:
         from acouchbase_columnar.protocol.cluster import AsyncCluster as _AsyncCluster
-        self._impl = _AsyncCluster(connstr, credential, options, **kwargs)
+        self._impl = _AsyncCluster(connstr, credential, options, loop, **kwargs)
 
     def database(self, name: str) -> AsyncDatabase:
         """Creates a database instance.
