@@ -157,15 +157,25 @@ class _ClientAdapter:
             raise ErrorMapper.build_exception(ret)
         self._client.connection = ret
 
+    def close_connection(self, req: CloseConnectionRequest) -> bool:
+        """
+            **INTERNAL**
+        """
+        return self._client.close_connection(req)
+
+    def reset_client(self) -> None:
+        """
+            **INTERNAL**
+        """
+        if hasattr(self, '_client'):
+            del self._client
+
     def _get_loop(self, loop: Optional[AbstractEventLoop] = None) -> AbstractEventLoop:
         """
             **INTERNAL**
         """
         if loop is None:
             loop = get_event_loop()
-
-        if not loop.is_running():
-            raise RuntimeError("Event loop is not running.")
 
         return loop
 
