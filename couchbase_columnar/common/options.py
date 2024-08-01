@@ -231,9 +231,7 @@ class QueryOptions(QueryOptionsBase):
     Timeout will default to cluster setting if not set for the operation.
 
     Args:
-        client_context_id (str, optional): None
         deserializer (Deserializer, optional): None
-        metrics (bool, optional): None
         named_parameters (Dict[str, JSONType], optional): None
         positional_parameters (Iterable[JSONType], optional): None
         priority (bool, optional): None
@@ -241,7 +239,6 @@ class QueryOptions(QueryOptionsBase):
         raw (Dict[str, Any], optional): None
         read_only (bool, optional): None
         scan_consistency (QueryScanConsistency, optional): None
-        span (CouchbaseSpan, optional): Set to provide tracing span for operation.  Defaults to `None`.
         timeout (timedelta, optional): Set to configure allowed time for operation to complete. Defaults to `None` (75s).
     """  # noqa: E501
 

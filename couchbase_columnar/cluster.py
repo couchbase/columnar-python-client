@@ -29,7 +29,7 @@ class Cluster:
     def __init__(self,
                  connstr: str,
                  credential: Credential,
-                 options: Optional[ClusterOptions],
+                 options: Optional[ClusterOptions] = None,
                  **kwargs: object) -> None:
         from couchbase_columnar.protocol.cluster import Cluster as _Cluster
         self._impl = _Cluster(connstr, credential, options, **kwargs)
@@ -59,6 +59,6 @@ class Cluster:
     def create_instance(cls,
                         connstr: str,
                         credential: Credential,
-                        options: Optional[ClusterOptions],
+                        options: Optional[ClusterOptions] = None,
                         **kwargs: object) -> Cluster:
         return cls(connstr, credential, options, **kwargs)

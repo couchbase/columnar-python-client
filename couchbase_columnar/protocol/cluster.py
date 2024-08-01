@@ -32,7 +32,7 @@ class Cluster:
     def __init__(self,
                  connstr: str,
                  credential: Credential,
-                 options: Optional[ClusterOptions],
+                 options: Optional[ClusterOptions] = None,
                  **kwargs: object) -> None:
         self._client_adapter = _ClientAdapter(connstr, credential, options, **kwargs)
         self._request_builder = ClusterRequestBuilder(self._client_adapter)

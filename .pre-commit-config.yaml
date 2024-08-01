@@ -78,6 +78,8 @@ repos:
         language: python
         additional_dependencies:
           - mypy==1.10.1
+          - pytest~=7.4
+          - pytest-asyncio~=0.23,>=0.23.1
         types:
           - python
         require_serial: true

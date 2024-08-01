@@ -37,7 +37,7 @@ class AsyncCluster:
     def __init__(self,
                  connstr: str,
                  credential: Credential,
-                 options: Optional[ClusterOptions],
+                 options: Optional[ClusterOptions] = None,
                  loop: Optional[AbstractEventLoop] = None,
                  **kwargs: object) -> None:
         from acouchbase_columnar.protocol.cluster import AsyncCluster as _AsyncCluster
@@ -68,7 +68,7 @@ class AsyncCluster:
     def create_instance(cls,
                         connstr: str,
                         credential: Credential,
-                        options: Optional[ClusterOptions],
+                        options: Optional[ClusterOptions] = None,
                         loop: Optional[AbstractEventLoop] = None,
                         **kwargs: object) -> AsyncCluster:
         return cls(connstr, credential, options, loop=loop, **kwargs)
