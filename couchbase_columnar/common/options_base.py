@@ -329,9 +329,7 @@ class TracingOptionsBase(Dict[str, object]):
 
 
 class QueryOptionsKwargs(TypedDict, total=False):
-    client_context_id: Optional[str]
     deserializer: Optional[Deserializer]
-    metrics: Optional[bool]
     named_parameters: Optional[Dict[str, JSONType]]
     positional_parameters: Optional[Iterable[JSONType]]
     priority: Optional[bool]
@@ -343,9 +341,7 @@ class QueryOptionsKwargs(TypedDict, total=False):
 
 
 QueryOptionsValidKeys: TypeAlias = Literal[
-    'client_context_id',
     'deserializer',
-    'metrics',
     'named_parameters',
     'positional_parameters',
     'priority',
@@ -360,9 +356,7 @@ QueryOptionsValidKeys: TypeAlias = Literal[
 class QueryOptionsBase(Dict[str, object]):
 
     VALID_OPTION_KEYS: List[QueryOptionsValidKeys] = [
-        'client_context_id',
         'deserializer',
-        'metrics',
         'named_parameters',
         'positional_parameters',
         'priority',
@@ -380,9 +374,7 @@ class QueryOptionsBase(Dict[str, object]):
     @overload
     def __init__(self,
                  *,
-                 client_context_id: Optional[str] = None,
                  deserializer: Optional[Deserializer] = None,
-                 metrics: Optional[bool] = None,
                  named_parameters: Optional[Dict[str, JSONType]] = None,
                  positional_parameters: Optional[Iterable[JSONType]] = None,
                  priority: Optional[bool] = None,

@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 import os
+import sys
 from functools import partial, partialmethod
 from typing import (Dict,
                     Optional,
@@ -25,7 +26,6 @@ try:
     import ssl  # noqa: F401 # nopep8 # isort:skip # noqa: E402
     import couchbase_columnar.protocol.pycbcc_core  # noqa: F401 # nopep8 # isort:skip # noqa: E402
 except ImportError:
-    import sys  # nopep8 # isort:skip # noqa: E402
     # should only need to do this on Windows w/ Python >= 3.8 due to the changes made for how DLLs are resolved
     if sys.platform.startswith('win32') and (3, 8) <= sys.version_info:
         open_ssl_dir = os.getenv('PYCBCC_OPENSSL_DIR')
@@ -48,7 +48,7 @@ try:
 except ImportError:
     __version__ = '0.0.0-could-not-find-version'
 
-PYCBCC_VERSION = f'pycbc/{__version__}'
+PYCBCC_VERSION = f'pycbcc/{__version__}'
 
 try:
     python_version_info = sys.version.split(' ')
@@ -118,6 +118,8 @@ def configure_console_logger() -> None:
     log_level = os.getenv('PYCBCC_LOG_LEVEL', None)
     if log_level:
         _PYCBCC_LOGGER.create_console_logger(log_level.lower())
+        logger = logging.getLogger()
+        logger.info(f'Python Couchbase Columnar Client ({PYCBCC_VERSION})')
         logging.getLogger().debug(get_metadata(as_str=True))
 
 
@@ -128,6 +130,7 @@ def configure_logging(name: str,
         name = f'{parent_logger.name}.{name}'
     logger = logging.getLogger(name)
     _PYCBCC_LOGGER.configure_logging_sink(logger, level)
+    logger.info(f'Python Couchbase Columnar Client ({PYCBCC_VERSION})')
     logger.debug(get_metadata(as_str=True))
 
 

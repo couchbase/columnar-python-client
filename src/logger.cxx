@@ -49,7 +49,7 @@ pycbcc_logger__configure_logging_sink__(PyObject* self, PyObject* args, PyObject
                                 __FILE__,
                                 __LINE__,
                                 "Cannot create logger.  Another logger has already been "
-                                "initialized. Make sure the PYCBC_LOG_LEVEL env "
+                                "initialized. Make sure the PYCBCC_LOG_LEVEL env "
                                 "variable is not set if using configure_logging.");
     return nullptr;
   }

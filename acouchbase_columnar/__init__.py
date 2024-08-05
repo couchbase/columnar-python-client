@@ -18,6 +18,9 @@ import selectors
 from asyncio import AbstractEventLoop
 from typing import Optional
 
+from couchbase_columnar.common import JSONType as JSONType  # noqa: F401
+from couchbase_columnar.protocol import configure_logging as configure_logging  # noqa: F401
+
 
 class _LoopValidator:
     """

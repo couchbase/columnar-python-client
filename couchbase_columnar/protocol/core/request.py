@@ -138,9 +138,6 @@ class ClusterRequestBuilder:
             q_opts['positional_parameters'] = args_list
         if named_params and len(named_params) > 0:
             q_opts['named_parameters'] = named_params
-        # metrics default to True
-        if 'metrics' not in q_opts:
-            q_opts['metrics'] = True
         # add the default serializer if one does not exist
         deserializer = q_opts.pop('deserializer', None) or self._conn_details.default_deserializer
 
@@ -208,9 +205,6 @@ class ScopeRequestBuilder:
             q_opts['positional_parameters'] = args_list
         if named_params and len(named_params) > 0:
             q_opts['named_parameters'] = named_params
-        # metrics default to True
-        if 'metrics' not in q_opts:
-            q_opts['metrics'] = True
         # add the default serializer if one does not exist
         deserializer = q_opts.pop('deserializer', None) or self._conn_details.default_deserializer
 

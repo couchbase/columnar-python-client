@@ -228,9 +228,7 @@ class TracingOptionsTransformedKwargs(TypedDict, total=False):
 
 
 QueryOptionsValidKeys: TypeAlias = Literal[
-    'client_context_id',
     'deserializer',
-    'metrics',
     'named_parameters',
     'positional_parameters',
     'priority',
@@ -243,9 +241,7 @@ QueryOptionsValidKeys: TypeAlias = Literal[
 
 
 class QueryOptionsTransforms(TypedDict):
-    client_context_id: Dict[Literal['client_context_id'], Callable[[Any], str]]
     deserializer: Dict[Literal['deserializer'], Callable[[Any], Deserializer]]
-    metrics: Dict[Literal['metrics'], Callable[[Any], bool]]
     named_parameters: Dict[Literal['named_parameters'], Callable[[Any], Any]]
     positional_parameters: Dict[Literal['positional_parameters'], Callable[[Any], Any]]
     priority: Dict[Literal['priority'], Callable[[Any], bool]]
@@ -257,9 +253,7 @@ class QueryOptionsTransforms(TypedDict):
 
 
 QUERY_OPTIONS_TRANSFORMS: QueryOptionsTransforms = {
-    'client_context_id': {'client_context_id': VALIDATE_STR},
     'deserializer': {'deserializer': VALIDATE_DESERIALIZER},
-    'metrics': {'metrics': VALIDATE_BOOL},
     'named_parameters':  {'named_parameters': lambda x: x},
     'positional_parameters':  {'positional_parameters': lambda x: x},
     'priority': {'priority': VALIDATE_BOOL},
@@ -272,9 +266,7 @@ QUERY_OPTIONS_TRANSFORMS: QueryOptionsTransforms = {
 
 
 class QueryOptionsTransformedKwargs(TypedDict, total=False):
-    client_context_id: Optional[str]
     deserializer: Optional[Deserializer]
-    metrics: Optional[bool]
     named_parameters: Optional[Any]
     positional_parameters: Optional[Any]
     priority: Optional[bool]

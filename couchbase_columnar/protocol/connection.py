@@ -15,7 +15,6 @@
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass
 from typing import (TYPE_CHECKING,
                     Dict,
@@ -29,6 +28,7 @@ from couchbase_columnar.common.core.utils import is_null_or_empty, to_query_str
 from couchbase_columnar.common.credential import Credential
 from couchbase_columnar.common.deserializer import DefaultJsonDeserializer, Deserializer
 from couchbase_columnar.common.options import ClusterOptions
+from couchbase_columnar.protocol import PYCBCC_VERSION
 from couchbase_columnar.protocol.options import (ClusterOptionsTransformedKwargs,
                                                  QueryStrVal,
                                                  SecurityOptionsTransformedKwargs)
@@ -57,12 +57,6 @@ def parse_connection_string(connection_str: str) -> Tuple[str, Dict[str, QuerySt
         Tuple[str, Dict[str, Any], Dict[str, Any]]: The parsed connection string,
             current options and legacy options.
     """
-    # handle possible lack of URL scheme
-    if '//' not in connection_str:
-        warning_msg = 'Connection string has deprecated format. Start connection string with: couchbase://'
-        warnings.warn(warning_msg, DeprecationWarning, stacklevel=2)
-        connection_str = f'//{connection_str}'
-
     parsed_conn = urlparse(connection_str)
     if parsed_conn.scheme is None or parsed_conn.scheme != 'couchbases':
         raise ValueError(f"The connection scheme must be 'couchbases'.  Found: {parsed_conn.scheme}.")
@@ -183,6 +177,11 @@ class _ConnectionDetails:
         default_deserializer = cluster_opts.pop('deserializer', None)
         if default_deserializer is None:
             default_deserializer = DefaultJsonDeserializer()
+
+        if 'user_agent_extra' in cluster_opts:
+            cluster_opts['user_agent_extra'] = f'{PYCBCC_VERSION};{cluster_opts["user_agent_extra"]}'
+        else:
+            cluster_opts['user_agent_extra'] = PYCBCC_VERSION
 
         conn_dtls = cls(connection_str,
                         cluster_opts,

@@ -23,13 +23,8 @@ python_files = [
 markers = [
     "pycbcc_couchbase: marks a test for the couchbase API (deselect with '-m \"not pycbcc_couchbase\"')",
     "pycbcc_acouchbase: marks a test for the acouchbase API (deselect with '-m \"not pycbcc_acouchbase\"')",
-    "pycbcc_diag: marks a test as a diagnostic API test",
-    "pycbcc_kv: marks a test as a Key-Value API test",
-    "pycbcc_streaming: marks a test as a streaming (query, search, analytics, or views) API test",
-    "pycbcc_mgmt: marks a test as a management API test",
-    "pycbcc_misc: marks a test as a miscellaneous (connect, rate_limit) API test",
-    "pycbcc_txn: marks a test as a transactions API test",
-    "pycbcc_slow_mgmt: marks a test as a management API test that is slow",
+    "pycbcc_unit: marks a test as a unit test",
+    "pycbcc_integration: marks a test as an integration test",
 ]
 
 [tool.autopep8]
