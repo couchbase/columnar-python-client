@@ -17,7 +17,6 @@
 
 #include "columnar_query.hxx"
 
-#include <core/columnar/agent.hxx>
 #include <core/columnar/error.hxx>
 #include <core/columnar/query_options.hxx>
 #include <core/columnar/query_result.hxx>
@@ -332,7 +331,6 @@ handle_columnar_query([[maybe_unused]] PyObject* self, PyObject* args, PyObject*
   Py_XINCREF(pyObj_callback);
   Py_XINCREF(pyObj_row_callback);
 
-  couchbase::core::columnar::agent agent{ conn->io_, { { conn->cluster_ } } };
   std::shared_ptr<std::promise<PyObject*>> barrier = nullptr;
   std::future<PyObject*> fut;
   if (nullptr == pyObj_callback) {
@@ -344,7 +342,7 @@ handle_columnar_query([[maybe_unused]] PyObject* self, PyObject* args, PyObject*
                couchbase::core::columnar::error>
     resp;
   {
-    Py_BEGIN_ALLOW_THREADS resp = agent.execute_query(
+    Py_BEGIN_ALLOW_THREADS resp = conn->agent_.execute_query(
       query_options,
       [pyObj_callback, pyObj_row_callback, barrier](couchbase::core::columnar::query_result res,
                                                     couchbase::core::columnar::error err) mutable {
