@@ -30,45 +30,6 @@ class QueryScanConsistency(Enum):
     REQUEST_PLUS = "request_plus"
 
 
-class QueryStatus(Enum):
-    RUNNING = "running"
-    SUCCESS = "success"
-    ERRORS = "errors"
-    COMPLETED = "completed"
-    STOPPED = "stopped"
-    TIMEOUT = "timeout"
-    CLOSED = "closed"
-    FATAL = "fatal"
-    ABORTED = "aborted"
-    UNKNOWN = "unknown"
-
-    @classmethod   # noqa: C901
-    def from_str(cls, value: str) -> QueryStatus:  # noqa: C901
-        if isinstance(value, str):
-            if value == cls.RUNNING.value:
-                return cls.RUNNING
-            elif value == cls.SUCCESS.value:
-                return cls.SUCCESS
-            elif value == cls.ERRORS.value:
-                return cls.ERRORS
-            elif value == cls.COMPLETED.value:
-                return cls.COMPLETED
-            elif value == cls.STOPPED.value:
-                return cls.STOPPED
-            elif value == cls.TIMEOUT.value:
-                return cls.TIMEOUT
-            elif value == cls.CLOSED.value:
-                return cls.CLOSED
-            elif value == cls.FATAL.value:
-                return cls.FATAL
-            elif value == cls.ABORTED.value:
-                return cls.ABORTED
-            elif value == cls.UNKNOWN.value:
-                return cls.UNKNOWN
-        raise InvalidArgumentException(message=(f"{value} is not a valid AnalyticsStatus option. "
-                                                "Excepted str representation of type AnalyticsStatus."))
-
-
 class IpProtocol(Enum):
     Any = 'any'
     ForceIPv4 = 'force_ipv4'

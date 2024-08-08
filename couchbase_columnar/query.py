@@ -14,8 +14,6 @@
 #  limitations under the License.
 
 from couchbase_columnar.common.enums import QueryScanConsistency as QueryScanConsistency  # noqa: F401
-from couchbase_columnar.common.enums import QueryStatus as QueryStatus  # noqa: F401
-from couchbase_columnar.common.query import QueryError as QueryError  # noqa: F401
-from couchbase_columnar.common.query import QueryMetaData as QueryMetaData  # noqa: F401
+from couchbase_columnar.common.query import QueryMetadata as QueryMetadata  # noqa: F401
 from couchbase_columnar.common.query import QueryMetrics as QueryMetrics  # noqa: F401
 from couchbase_columnar.common.query import QueryWarning as QueryWarning  # noqa: F401

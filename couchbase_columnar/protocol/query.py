@@ -21,7 +21,7 @@ from typing import (TYPE_CHECKING,
                     Optional)
 
 from couchbase_columnar.common.exceptions import ColumnarException
-from couchbase_columnar.common.query import QueryMetaData
+from couchbase_columnar.common.query import QueryMetadata
 from couchbase_columnar.common.streaming import StreamingExecutor
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
 from couchbase_columnar.protocol.exceptions import (PYCBCC_ERROR_MAP,
@@ -48,7 +48,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
         self._started_streaming = False
         self._deserializer = request.deserializer
         self._done_streaming = False
-        self._metadata: Optional[QueryMetaData] = None
+        self._metadata: Optional[QueryMetadata] = None
         # self.submit_query()
 
     @property
@@ -64,7 +64,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
             return
         self._query_iter.cancel()
 
-    def get_metadata(self) -> Optional[QueryMetaData]:
+    def get_metadata(self) -> Optional[QueryMetadata]:
         # TODO:  Maybe not needed if we get metadata automatically?
         if self._metadata is None:
             self.set_metadata()
@@ -93,7 +93,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
         if query_metadata is None:
             # TODO:  better exception
             raise ColumnarException.from_message('Metadata unavailable.')
-        self._metadata = QueryMetaData(query_metadata)
+        self._metadata = QueryMetadata(query_metadata)
 
     def submit_query(self) -> None:
         if self._done_streaming:

@@ -22,7 +22,7 @@ from typing import (Any,
                     Optional)
 
 from couchbase_columnar.common.core.result import QueryResult as QueryResult
-from couchbase_columnar.common.query import QueryMetaData
+from couchbase_columnar.common.query import QueryMetadata
 from couchbase_columnar.common.streaming import (AsyncIterator,
                                                  BlockingIterator,
                                                  StreamingExecutor)
@@ -47,11 +47,11 @@ class BlockingQueryResult(QueryResult):
         """
         return BlockingIterator(self._executor).get_all_rows()
 
-    def metadata(self) -> Optional[QueryMetaData]:
+    def metadata(self) -> Optional[QueryMetadata]:
         """The meta-data which has been returned by the query.
 
         Returns:
-            :class:`~couchbase_columnar.query.QueryMetaData`: An instance of :class:`~couchbase_columnar.query.QueryMetaData`.
+            :class:`~couchbase_columnar.query.QueryMetadata`: An instance of :class:`~couchbase_columnar.query.QueryMetadata`.
         """  # noqa: E501
         return self._executor.get_metadata()
 
@@ -92,11 +92,11 @@ class AsyncQueryResult(QueryResult):
         """
         return await AsyncIterator(self._executor).get_all_rows()
 
-    def metadata(self) -> Optional[QueryMetaData]:
+    def metadata(self) -> Optional[QueryMetadata]:
         """The meta-data which has been returned by the query.
 
         Returns:
-            :class:`~couchbase_columnar.query.QueryMetaData`: An instance of :class:`~couchbase_columnar.query.QueryMetaData`.
+            :class:`~couchbase_columnar.query.QueryMetadata`: An instance of :class:`~couchbase_columnar.query.QueryMetadata`.
         """  # noqa: E501
         return self._executor.get_metadata()
 

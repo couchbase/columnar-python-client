@@ -15,11 +15,7 @@
 
 from __future__ import annotations
 
-from typing import (List,
-                    Optional,
-                    TypedDict)
-
-from couchbase_columnar.common import JSONType
+from typing import List, TypedDict
 
 
 class QueryMetricsCore(TypedDict, total=False):
@@ -27,35 +23,27 @@ class QueryMetricsCore(TypedDict, total=False):
         **INTERNAL**
     """
 
-    elapsed_time: Optional[int]
-    execution_time: Optional[int]
-    sort_count: Optional[int]
-    result_count: Optional[int]
-    result_size: Optional[int]
-    mutation_count: Optional[int]
-    error_count: Optional[int]
-    warning_count: Optional[int]
+    elapsed_time: int
+    execution_time: int
+    result_count: int
+    result_size: int
+    processed_objects: int
 
 
-class QueryProblemCore(TypedDict, total=False):
+class QueryWarningCore(TypedDict, total=False):
     """
         **INTERNAL**
     """
 
-    code: Optional[int]
-    message: Optional[str]
+    code: int
+    message: str
 
 
-class QueryMetaDataCore(TypedDict, total=False):
+class QueryMetadataCore(TypedDict, total=False):
     """
         **INTERNAL**
     """
 
-    request_id: Optional[str]
-    client_context_id: Optional[str]
-    status: Optional[str]
-    signature: Optional[JSONType]
-    warnings: Optional[List[QueryProblemCore]]
-    errors: Optional[List[QueryProblemCore]]
-    metrics: Optional[QueryMetricsCore]
-    profile: Optional[JSONType]
+    request_id: str
+    warnings: List[QueryWarningCore]
+    metrics: QueryMetricsCore
