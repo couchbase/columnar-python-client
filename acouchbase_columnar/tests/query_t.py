@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -37,6 +38,7 @@ class QueryTestSuite:
         'test_query_positional_params_override',
         'test_query_raw_options',
         'test_simple_query',
+        'test_query_metadata',
     ]
 
     @pytest.mark.asyncio
@@ -101,6 +103,27 @@ class QueryTestSuite:
         statement = f'SELECT * FROM {test_env.fqdn} LIMIT 2;'
         result = await test_env.cluster.execute_query(statement)
         await test_env.assert_rows(result, 2)
+
+    @pytest.mark.asyncio
+    async def test_query_metadata(self, test_env: AsyncTestEnvironment) -> None:
+        statement = f'SELECT * FROM {test_env.fqdn} LIMIT 2;'
+        result = await test_env.cluster.execute_query(statement)
+        await test_env.assert_rows(result, 2)
+
+        metadata = result.metadata()
+
+        assert metadata is not None
+
+        assert len(metadata.warnings()) == 0
+        assert len(metadata.request_id()) > 0
+
+        metrics = metadata.metrics()
+
+        assert metrics.result_size() > 0
+        assert metrics.result_count() == 2
+        assert metrics.processed_objects() > 0
+        assert metrics.elapsed_time() > timedelta(0)
+        assert metrics.execution_time() > timedelta(0)
 
 
 class QueryTests(QueryTestSuite):

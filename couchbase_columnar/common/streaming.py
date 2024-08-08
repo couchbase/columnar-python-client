@@ -32,7 +32,7 @@ else:
     from collections.abc import Iterator
 
 from couchbase_columnar.common.exceptions import AlreadyQueriedException, ColumnarException
-from couchbase_columnar.common.query import QueryMetaData
+from couchbase_columnar.common.query import QueryMetadata
 
 
 class StreamingExecutor(ABC):
@@ -52,7 +52,7 @@ class StreamingExecutor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_metadata(self) -> Optional[QueryMetaData]:
+    def get_metadata(self) -> Optional[QueryMetadata]:
         raise NotImplementedError
 
     @abstractmethod

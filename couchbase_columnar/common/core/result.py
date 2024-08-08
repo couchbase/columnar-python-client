@@ -24,7 +24,7 @@ from typing import (Any,
                     Optional,
                     Union)
 
-from couchbase_columnar.common.query import QueryMetaData
+from couchbase_columnar.common.query import QueryMetadata
 
 
 class QueryResult(ABC):
@@ -37,7 +37,7 @@ class QueryResult(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def metadata(self) -> Optional[QueryMetaData]:
+    def metadata(self) -> Optional[QueryMetadata]:
         raise NotImplementedError
 
     @abstractmethod

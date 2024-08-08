@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -27,7 +28,6 @@ if TYPE_CHECKING:
 
 
 class QueryTestSuite:
-
     TEST_MANIFEST = [
         'test_query_named_parameters',
         'test_query_named_parameters_no_options',
@@ -37,6 +37,7 @@ class QueryTestSuite:
         'test_query_positional_params_override',
         'test_query_raw_options',
         'test_simple_query',
+        'test_query_metadata',
     ]
 
     def test_query_named_parameters(self, test_env: BlockingTestEnvironment) -> None:
@@ -94,6 +95,25 @@ class QueryTestSuite:
         result = test_env.cluster.execute_query(statement)
         test_env.assert_rows(result, 2)
 
+    def test_query_metadata(self, test_env: BlockingTestEnvironment) -> None:
+        statement = f'SELECT * FROM {test_env.fqdn} LIMIT 2;'
+        result = test_env.cluster.execute_query(statement)
+        test_env.assert_rows(result, 2)
+
+        metadata = result.metadata()
+
+        assert metadata is not None
+        assert len(metadata.warnings()) == 0
+        assert len(metadata.request_id()) > 0
+
+        metrics = metadata.metrics()
+
+        assert metrics.result_size() > 0
+        assert metrics.result_count() == 2
+        assert metrics.processed_objects() > 0
+        assert metrics.elapsed_time() > timedelta(0)
+        assert metrics.execution_time() > timedelta(0)
+
 
 class QueryTests(QueryTestSuite):
 
@@ -102,6 +122,7 @@ class QueryTests(QueryTestSuite):
         def valid_test_method(meth: str) -> bool:
             attr = getattr(QueryTests, meth)
             return callable(attr) and not meth.startswith('__') and meth.startswith('test')
+
         method_list = [meth for meth in dir(QueryTests) if valid_test_method(meth)]
         test_list = set(QueryTestSuite.TEST_MANIFEST).symmetric_difference(method_list)
         if test_list:
