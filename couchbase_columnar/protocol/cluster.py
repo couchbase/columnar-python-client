@@ -15,7 +15,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from concurrent.futures import Future, ThreadPoolExecutor
+from threading import Event
+from typing import (TYPE_CHECKING,
+                    Optional,
+                    Union)
 
 from couchbase_columnar.common.result import BlockingQueryResult
 from couchbase_columnar.protocol.core.client_adapter import _ClientAdapter
@@ -37,6 +41,9 @@ class Cluster:
         self._client_adapter = _ClientAdapter(connstr, credential, options, **kwargs)
         self._request_builder = ClusterRequestBuilder(self._client_adapter)
         self._connect()
+        # Allow the default max_workers which is (as of Python 3.8): min(32, os.cpu_count() + 4).
+        # We can add an option later if we see a need
+        self._tp_executor = ThreadPoolExecutor()
 
     @property
     def client_adapter(self) -> _ClientAdapter:
@@ -82,12 +89,36 @@ class Cluster:
             # TODO: log warning and/or exception?
             print('Cluster does not have a connection.  Ignoring')
 
-    def execute_query(self, statement: str, *args: object, **kwargs: object) -> BlockingQueryResult:
-        executor = _QueryStreamingExecutor(self.client_adapter.client,
-                                           self._request_builder.build_query_request(statement,
-                                                                                     *args,
-                                                                                     **kwargs))
+    def _execute_query_in_background(self, executor: _QueryStreamingExecutor) -> BlockingQueryResult:
+        """
+            **INTERNAL**
+        """
+        executor.submit_query_in_background()
         return BlockingQueryResult(executor)
+
+    def execute_query(self,
+                      statement: str,
+                      *args: object,
+                      **kwargs: object) -> Union[BlockingQueryResult, Future[BlockingQueryResult]]:
+        cancel_token: Optional[Event] = kwargs.pop('cancel_token', None)
+        cancel_poll_interval: float = kwargs.pop('cancel_poll_interval', 0.25)
+        req = self._request_builder.build_query_request(statement, *args, **kwargs)
+        lazy_execute = req.options.pop('lazy_execute', None)
+        executor = _QueryStreamingExecutor(self.client_adapter.client,
+                                           req,
+                                           cancel_token=cancel_token,
+                                           cancel_poll_interval=cancel_poll_interval,
+                                           lazy_execute=lazy_execute)
+        if executor.cancel_token is not None:
+            # TODO:  warning or exception?  lazy is only available for the non-cancellable path
+            # if lazy_execute is not None:
+            #     raise Exception()
+            ft = self._tp_executor.submit(self._execute_query_in_background, executor)
+            return ft
+        else:
+            if executor.lazy_execute is not True:
+                executor.submit_query()
+            return BlockingQueryResult(executor)
 
     @classmethod
     def create_instance(cls,

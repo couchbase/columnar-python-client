@@ -15,7 +15,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from concurrent.futures import Future
+from typing import TYPE_CHECKING, Union
 
 from couchbase_columnar.result import BlockingQueryResult
 
@@ -35,5 +36,11 @@ class Scope:
         """
         return self._impl.name
 
-    def execute_query(self, statement: str, *args: object, **kwargs: object) -> BlockingQueryResult:
+    # def execute_query(self, statement: str, *args: object, **kwargs: object) -> BlockingQueryResult:
+    #     return self._impl.execute_query(statement, *args, **kwargs)
+
+    def execute_query(self,
+                      statement: str,
+                      *args: object,
+                      **kwargs: object) -> Union[Future[BlockingQueryResult], BlockingQueryResult]:
         return self._impl.execute_query(statement, *args, **kwargs)

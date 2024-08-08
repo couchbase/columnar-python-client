@@ -37,14 +37,14 @@ class ColumnarConfig:
         self._username = 'Administrator'
         self._password = 'password'
         self._nonprod = False
-        self._bucket_name = 'travel-sample'
+        self._database_name = 'travel-sample'
         self._scope_name = 'inventory'
         self._collection_name = 'airline'
         self._tls_verify = True
 
     @property
-    def bucket_name(self) -> str:
-        return self._bucket_name
+    def database_name(self) -> str:
+        return self._database_name
 
     @property
     def collection_name(self) -> str:
@@ -52,7 +52,7 @@ class ColumnarConfig:
 
     @property
     def fqdn(self) -> str:
-        return f'`{self._bucket_name}`.`{self._scope_name}`.`{self._collection_name}`'
+        return f'`{self._database_name}`.`{self._scope_name}`.`{self._collection_name}`'
 
     @property
     def nonprod(self) -> bool:
@@ -94,9 +94,9 @@ class ColumnarConfig:
                 columnar_config._nonprod = True
             else:
                 columnar_config._nonprod = False
-            columnar_config._bucket_name = os.environ.get('PYCBCC_BUCKET',
-                                                          test_config_columnar.get('bucket_name',
-                                                                                   fallback='travel-sample'))
+            columnar_config._database_name = os.environ.get('PYCBCC_DATABASE',
+                                                            test_config_columnar.get('database_name',
+                                                                                     fallback='travel-sample'))
             columnar_config._scope_name = os.environ.get('PYCBCC_SCOPE',
                                                          test_config_columnar.get('scope_name', fallback='inventory'))
             columnar_config._collection_name = os.environ.get('PYCBCC_COLLECTION',

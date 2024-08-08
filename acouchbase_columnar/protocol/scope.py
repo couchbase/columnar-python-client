@@ -16,6 +16,8 @@
 from __future__ import annotations
 
 import sys
+from asyncio import Future
+from functools import partial
 from typing import TYPE_CHECKING
 
 if sys.version_info < (3, 10):
@@ -53,12 +55,25 @@ class AsyncScope:
         """
         return self._scope_name
 
-    async def execute_query(self, statement: str, *args: object, **kwargs: object) -> AsyncQueryResult:
+    # async def execute_query(self, statement: str, *args: object, **kwargs: object) -> AsyncQueryResult:
+    #     req = self._request_builder.build_query_request(statement, *args, **kwargs)
+    #     executor = await _AsyncQueryStreamingExecutor.create_executor(self.client_adapter.client,
+    #                                                                   self.client_adapter.loop,
+    #                                                                   req)
+    #     return AsyncQueryResult(executor)
+
+    def _query_done_callback(self, executor: _AsyncQueryStreamingExecutor, ft: Future) -> None:
+        if ft.cancelled():
+            executor.cancel()
+
+    def execute_query(self, statement: str, *args: object, **kwargs: object) -> Future[AsyncQueryResult]:
         req = self._request_builder.build_query_request(statement, *args, **kwargs)
-        executor = await _AsyncQueryStreamingExecutor.create_executor(self.client_adapter.client,
-                                                                      self.client_adapter.loop,
-                                                                      req)
-        return AsyncQueryResult(executor)
+        executor = _AsyncQueryStreamingExecutor(self.client_adapter.client,
+                                                self.client_adapter.loop,
+                                                req)
+        ft = executor.submit_query()
+        ft.add_done_callback(partial(self._query_done_callback, executor))
+        return ft
 
 
 Scope: TypeAlias = AsyncScope

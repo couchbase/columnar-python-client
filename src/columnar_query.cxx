@@ -1,5 +1,5 @@
 /*
- *   Copyright 2016-2022. Couchbase, Inc.
+ *   Copyright 2016-2024. Couchbase, Inc.
  *   All Rights Reserved.
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +19,6 @@
 
 #include <core/columnar/error.hxx>
 #include <core/columnar/query_options.hxx>
-#include <core/columnar/query_result.hxx>
 
 #include "exceptions.hxx"
 #include "result.hxx"
@@ -40,11 +39,10 @@ str_to_columnar_scan_consistency_type(std::string consistency)
 }
 
 void
-create_columnar_query_iterator(couchbase::core::columnar::query_result resp,
-                               couchbase::core::columnar::error err,
-                               PyObject* pyObj_callback,
-                               PyObject* pyObj_row_callback,
-                               std::shared_ptr<std::promise<PyObject*>> barrier = nullptr)
+create_columnar_response(couchbase::core::columnar::query_result resp,
+                         couchbase::core::columnar::error err,
+                         PyObject* pyObj_query_iter,
+                         PyObject* pyObj_callback)
 {
   auto set_exception = false;
   PyObject* pyObj_exc = nullptr;
@@ -53,41 +51,27 @@ create_columnar_query_iterator(couchbase::core::columnar::query_result resp,
   PyObject* pyObj_callback_res = nullptr;
 
   PyGILState_STATE state = PyGILState_Ensure();
+  auto query_iter = reinterpret_cast<columnar_query_iterator*>(pyObj_query_iter);
   if (err.ec) {
-    pyObj_exc = pycbcc_build_exception(err.ec, __FILE__, __LINE__, "Error doing query operation.");
+    pyObj_exc = pycbcc_build_exception(err.ec, __FILE__, __LINE__, err.message);
     if (pyObj_callback == nullptr) {
-      barrier->set_value(pyObj_exc);
+      query_iter->barrier_->set_value(pyObj_exc);
     } else {
       pyObj_func = pyObj_callback;
       pyObj_args = PyTuple_New(1);
       PyTuple_SET_ITEM(pyObj_args, 0, pyObj_exc);
     }
+
     // lets clear any errors
     PyErr_Clear();
   } else {
-    auto query_iter = create_columnar_query_iterator_obj(resp, pyObj_row_callback);
-    if (query_iter == nullptr || PyErr_Occurred() != nullptr) {
-      set_exception = true;
-    } else {
-      if (pyObj_callback == nullptr) {
-        barrier->set_value(reinterpret_cast<PyObject*>(query_iter));
-      } else {
-        pyObj_func = pyObj_callback;
-        pyObj_args = PyTuple_New(1);
-        PyTuple_SET_ITEM(pyObj_args, 0, reinterpret_cast<PyObject*>(query_iter));
-      }
-    }
-  }
-
-  if (set_exception) {
-    pyObj_exc = pycbcc_build_exception(
-      PycbccError::UnableToBuildResult, __FILE__, __LINE__, "Columnar query operation error.");
+    query_iter->set_query_result(std::move(resp));
     if (pyObj_callback == nullptr) {
-      barrier->set_value(pyObj_exc);
+      query_iter->barrier_->set_value(PyBool_FromLong(static_cast<long>(1)));
     } else {
       pyObj_func = pyObj_callback;
       pyObj_args = PyTuple_New(1);
-      PyTuple_SET_ITEM(pyObj_args, 0, pyObj_exc);
+      PyTuple_SET_ITEM(pyObj_args, 0, PyBool_FromLong(static_cast<long>(1)));
     }
   }
 
@@ -331,23 +315,22 @@ handle_columnar_query([[maybe_unused]] PyObject* self, PyObject* args, PyObject*
   Py_XINCREF(pyObj_callback);
   Py_XINCREF(pyObj_row_callback);
 
-  std::shared_ptr<std::promise<PyObject*>> barrier = nullptr;
-  std::future<PyObject*> fut;
-  if (nullptr == pyObj_callback) {
-    barrier = std::make_shared<std::promise<PyObject*>>();
-    fut = barrier->get_future();
-  }
-
+  couchbase::core::columnar::agent agent{ conn->io_, { { conn->cluster_ } } };
   tl::expected<std::shared_ptr<couchbase::core::pending_operation>,
                couchbase::core::columnar::error>
     resp;
+
+  PyObject* pyObj_query_iter = create_columnar_query_iterator_obj(pyObj_row_callback);
+  auto query_iter = reinterpret_cast<columnar_query_iterator*>(pyObj_query_iter);
+  if (nullptr == pyObj_callback) {
+    query_iter->barrier_ = std::make_shared<std::promise<PyObject*>>();
+  }
   {
     Py_BEGIN_ALLOW_THREADS resp = conn->agent_.execute_query(
       query_options,
-      [pyObj_callback, pyObj_row_callback, barrier](couchbase::core::columnar::query_result res,
-                                                    couchbase::core::columnar::error err) mutable {
-        create_columnar_query_iterator(
-          std::move(res), err, pyObj_callback, pyObj_row_callback, barrier);
+      [pyObj_query_iter, pyObj_callback](couchbase::core::columnar::query_result res,
+                                         couchbase::core::columnar::error err) mutable {
+        create_columnar_response(std::move(res), err, pyObj_query_iter, pyObj_callback);
       });
     Py_END_ALLOW_THREADS
   }
@@ -358,11 +341,6 @@ handle_columnar_query([[maybe_unused]] PyObject* self, PyObject* args, PyObject*
     pycbcc_set_python_exception(resp.error().ec, __FILE__, __LINE__, resp.error().message.c_str());
     return nullptr;
   }
-
-  if (nullptr == pyObj_callback) {
-    PyObject* ret = nullptr;
-    Py_BEGIN_ALLOW_THREADS ret = fut.get();
-    Py_END_ALLOW_THREADS return ret;
-  }
-  Py_RETURN_NONE;
+  query_iter->set_pending_operation(resp.value());
+  return reinterpret_cast<PyObject*>(query_iter);
 }

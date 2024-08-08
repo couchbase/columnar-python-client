@@ -229,6 +229,7 @@ class TracingOptionsTransformedKwargs(TypedDict, total=False):
 
 QueryOptionsValidKeys: TypeAlias = Literal[
     'deserializer',
+    'lazy_execute',
     'named_parameters',
     'positional_parameters',
     'priority',
@@ -242,6 +243,7 @@ QueryOptionsValidKeys: TypeAlias = Literal[
 
 class QueryOptionsTransforms(TypedDict):
     deserializer: Dict[Literal['deserializer'], Callable[[Any], Deserializer]]
+    lazy_execute: Dict[Literal['lazy_execute'], Callable[[Any], bool]]
     named_parameters: Dict[Literal['named_parameters'], Callable[[Any], Any]]
     positional_parameters: Dict[Literal['positional_parameters'], Callable[[Any], Any]]
     priority: Dict[Literal['priority'], Callable[[Any], bool]]
@@ -254,6 +256,7 @@ class QueryOptionsTransforms(TypedDict):
 
 QUERY_OPTIONS_TRANSFORMS: QueryOptionsTransforms = {
     'deserializer': {'deserializer': VALIDATE_DESERIALIZER},
+    'lazy_execute': {'lazy_execute': VALIDATE_BOOL},
     'named_parameters':  {'named_parameters': lambda x: x},
     'positional_parameters':  {'positional_parameters': lambda x: x},
     'priority': {'priority': VALIDATE_BOOL},
@@ -267,6 +270,7 @@ QUERY_OPTIONS_TRANSFORMS: QueryOptionsTransforms = {
 
 class QueryOptionsTransformedKwargs(TypedDict, total=False):
     deserializer: Optional[Deserializer]
+    lazy_execute: Optional[bool]
     named_parameters: Optional[Any]
     positional_parameters: Optional[Any]
     priority: Optional[bool]

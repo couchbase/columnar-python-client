@@ -273,8 +273,23 @@ static PyObject*
 columnar_query_iterator__cancel__(columnar_query_iterator* self)
 {
   columnar_query_iterator* query_iter = reinterpret_cast<columnar_query_iterator*>(self);
-  query_iter->query_result_->cancel();
+  if (query_iter->pending_op_ && !query_iter->query_result_) {
+    query_iter->pending_op_->cancel();
+  } else if (query_iter->query_result_) {
+    query_iter->query_result_->cancel();
+  }
+
   Py_RETURN_NONE;
+}
+
+static PyObject*
+columnar_query_iterator__wait_for_core_query_result__(columnar_query_iterator* self)
+{
+  columnar_query_iterator* query_iter = reinterpret_cast<columnar_query_iterator*>(self);
+  auto future = query_iter->barrier_->get_future();
+  PyObject* ret = nullptr;
+  Py_BEGIN_ALLOW_THREADS ret = future.get();
+  Py_END_ALLOW_THREADS return ret;
 }
 
 static PyObject*
@@ -306,6 +321,10 @@ static PyMethodDef columnar_query_iterator_TABLE_methods[] = {
     (PyCFunction)columnar_query_iterator__cancel__,
     METH_NOARGS,
     PyDoc_STR("Cancel Columnar query stream.") },
+  { "wait_for_core_query_result",
+    (PyCFunction)columnar_query_iterator__wait_for_core_query_result__,
+    METH_NOARGS,
+    PyDoc_STR("Wait for query stream's query result.") },
   { "metadata",
     (PyCFunction)columnar_query_iterator__metadata__,
     METH_NOARGS,
@@ -448,18 +467,16 @@ pycbcc_columnar_query_iterator_type_init(PyObject** ptr)
   return PyType_Ready(p);
 }
 
-columnar_query_iterator*
-create_columnar_query_iterator_obj(couchbase::core::columnar::query_result result,
-                                   PyObject* pyObj_row_callback)
+PyObject*
+create_columnar_query_iterator_obj(PyObject* pyObj_row_callback)
 {
   PyObject* pyObj_res =
     PyObject_CallObject(reinterpret_cast<PyObject*>(&columnar_query_iterator_type), nullptr);
   columnar_query_iterator* query_iter = reinterpret_cast<columnar_query_iterator*>(pyObj_res);
-  query_iter->query_result_ = std::make_shared<couchbase::core::columnar::query_result>(result);
   if (pyObj_row_callback != nullptr) {
     query_iter->row_callback = pyObj_row_callback;
   }
-  return query_iter;
+  return reinterpret_cast<PyObject*>(query_iter);
 }
 
 PyTypeObject columnar_query_iterator_type = { PyObject_HEAD_INIT(NULL) 0 };
