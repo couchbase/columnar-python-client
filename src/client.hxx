@@ -26,6 +26,7 @@
 #include <thread>
 
 #include <core/cluster.hxx>
+#include <core/columnar/agent.hxx>
 #include <core/logger/logger.hxx>
 #include <core/operations.hxx>
 
@@ -200,6 +201,7 @@ public:
 struct connection {
   asio::io_context io_;
   couchbase::core::cluster cluster_;
+  couchbase::core::columnar::agent agent_;
   std::list<std::thread> io_threads_;
 
   connection()
@@ -209,6 +211,7 @@ struct connection {
 
   connection(int num_io_threads)
     : cluster_(couchbase::core::cluster(io_))
+    , agent_(couchbase::core::columnar::agent(io_, { { cluster_ } }))
   {
     for (int i = 0; i < num_io_threads; i++) {
       // TODO: consider maybe catching exceptions and running run() again?  For now, lets
