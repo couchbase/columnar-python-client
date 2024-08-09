@@ -14,7 +14,6 @@
 #  limitations under the License.
 
 from couchbase_columnar.common.enums import IpProtocol as IpProtocol  # noqa: F401
-from couchbase_columnar.common.enums import TLSVerifyMode as TLSVerifyMode  # noqa: F401
 from couchbase_columnar.common.options import ClusterOptions as ClusterOptions  # noqa: F401
 from couchbase_columnar.common.options import ClusterOptionsKwargs as ClusterOptionsKwargs  # noqa: F401
 from couchbase_columnar.common.options import QueryOptions as QueryOptions  # noqa: F401
@@ -23,5 +22,3 @@ from couchbase_columnar.common.options import SecurityOptions as SecurityOptions
 from couchbase_columnar.common.options import SecurityOptionsKwargs as SecurityOptionsKwargs  # noqa: F401
 from couchbase_columnar.common.options import TimeoutOptions as TimeoutOptions  # noqa: F401
 from couchbase_columnar.common.options import TimeoutOptionsKwargs as TimeoutOptionsKwargs  # noqa: F401
-from couchbase_columnar.common.options import TracingOptions as TracingOptions  # noqa: F401
-from couchbase_columnar.common.options import TracingOptionsKwargs as TracingOptionsKwargs  # noqa: F401

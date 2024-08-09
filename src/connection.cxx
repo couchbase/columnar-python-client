@@ -174,253 +174,6 @@ get_cluster_credentials(PyObject* pyObj_credentials)
   return creds;
 }
 
-PyObject*
-get_metrics_options(const couchbase::core::metrics::logging_meter_options& logging_options)
-{
-  PyObject* pyObj_opts = PyDict_New();
-  std::chrono::duration<unsigned long long, std::milli> int_msec = logging_options.emit_interval;
-  PyObject* pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "emit_interval", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  return pyObj_opts;
-}
-
-void
-update_cluster_logging_meter_options(couchbase::core::cluster_options& options,
-                                     PyObject* pyObj_emit_interval)
-{
-  couchbase::core::metrics::logging_meter_options logging_options{};
-  bool has_logging_meter_options = false;
-
-  if (pyObj_emit_interval != nullptr) {
-    auto emit_interval = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_emit_interval));
-    auto emit_interval_ms = std::chrono::milliseconds(std::max(0ULL, emit_interval / 1000ULL));
-    logging_options.emit_interval = emit_interval_ms;
-    has_logging_meter_options = true;
-  }
-
-  if (has_logging_meter_options) {
-    options.metrics_options = logging_options;
-  }
-}
-
-PyObject*
-get_tracing_options(const couchbase::core::tracing::threshold_logging_options& tracing_options)
-{
-  PyObject* pyObj_opts = PyDict_New();
-  std::chrono::duration<unsigned long long, std::milli> int_msec =
-    tracing_options.orphaned_emit_interval;
-  PyObject* pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "orphaned_emit_interval", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  pyObj_tmp = PyLong_FromSize_t(tracing_options.orphaned_sample_size);
-  if (-1 == PyDict_SetItemString(pyObj_opts, "orphaned_sample_size", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = tracing_options.threshold_emit_interval;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "threshold_emit_interval", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  pyObj_tmp = PyLong_FromSize_t(tracing_options.threshold_sample_size);
-  if (-1 == PyDict_SetItemString(pyObj_opts, "threshold_sample_size", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = tracing_options.key_value_threshold;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "key_value_threshold", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = tracing_options.query_threshold;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "query_threshold", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = tracing_options.view_threshold;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "view_threshold", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = tracing_options.search_threshold;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "search_threshold", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = tracing_options.analytics_threshold;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "analytics_threshold", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = tracing_options.management_threshold;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "management_threshold", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = tracing_options.eventing_threshold;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "eventing_threshold", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  return pyObj_opts;
-}
-
-void
-update_cluster_tracing_options(couchbase::core::cluster_options& options,
-                               PyObject* pyObj_tracing_opts)
-{
-  couchbase::core::tracing::threshold_logging_options tracing_options{};
-  bool has_tracing_options = false;
-
-  PyObject* pyObj_kv_threshold = PyDict_GetItemString(pyObj_tracing_opts, "key_value_threshold");
-  if (pyObj_kv_threshold != nullptr) {
-    auto kv_threshold = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_kv_threshold));
-    auto kv_threshold_ms = std::chrono::milliseconds(std::max(0ULL, kv_threshold / 1000ULL));
-    tracing_options.key_value_threshold = kv_threshold_ms;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_view_threshold = PyDict_GetItemString(pyObj_tracing_opts, "view_threshold");
-  if (pyObj_view_threshold != nullptr) {
-    auto view_threshold = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_view_threshold));
-    auto view_threshold_ms = std::chrono::milliseconds(std::max(0ULL, view_threshold / 1000ULL));
-    tracing_options.view_threshold = view_threshold_ms;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_query_threshold = PyDict_GetItemString(pyObj_tracing_opts, "query_threshold");
-  if (pyObj_query_threshold != nullptr) {
-    auto query_threshold = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_query_threshold));
-    auto query_threshold_ms = std::chrono::milliseconds(std::max(0ULL, query_threshold / 1000ULL));
-    tracing_options.query_threshold = query_threshold_ms;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_search_threshold = PyDict_GetItemString(pyObj_tracing_opts, "search_threshold");
-  if (pyObj_search_threshold != nullptr) {
-    auto search_threshold =
-      static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_search_threshold));
-    auto search_threshold_ms =
-      std::chrono::milliseconds(std::max(0ULL, search_threshold / 1000ULL));
-    tracing_options.search_threshold = search_threshold_ms;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_analytics_threshold =
-    PyDict_GetItemString(pyObj_tracing_opts, "analytics_threshold");
-  if (pyObj_analytics_threshold != nullptr) {
-    auto analytics_threshold =
-      static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_analytics_threshold));
-    auto analytics_threshold_ms =
-      std::chrono::milliseconds(std::max(0ULL, analytics_threshold / 1000ULL));
-    tracing_options.analytics_threshold = analytics_threshold_ms;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_eventing_threshold =
-    PyDict_GetItemString(pyObj_tracing_opts, "eventing_threshold");
-  if (pyObj_eventing_threshold != nullptr) {
-    auto eventing_threshold =
-      static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_eventing_threshold));
-    auto eventing_threshold_ms =
-      std::chrono::milliseconds(std::max(0ULL, eventing_threshold / 1000ULL));
-    tracing_options.eventing_threshold = eventing_threshold_ms;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_management_threshold =
-    PyDict_GetItemString(pyObj_tracing_opts, "management_threshold");
-  if (pyObj_management_threshold != nullptr) {
-    auto management_threshold =
-      static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_management_threshold));
-    auto management_threshold_ms =
-      std::chrono::milliseconds(std::max(0ULL, management_threshold / 1000ULL));
-    tracing_options.management_threshold = management_threshold_ms;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_threshold_sample_size =
-    PyDict_GetItemString(pyObj_tracing_opts, "threshold_sample_size");
-  if (pyObj_threshold_sample_size != nullptr) {
-    auto threshold_sample_size =
-      static_cast<size_t>(PyLong_AsUnsignedLong(pyObj_threshold_sample_size));
-    tracing_options.threshold_sample_size = threshold_sample_size;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_threshold_emit_interval =
-    PyDict_GetItemString(pyObj_tracing_opts, "threshold_emit_interval");
-  if (pyObj_threshold_emit_interval != nullptr) {
-    auto threshold_emit_interval =
-      static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_threshold_emit_interval));
-    auto threshold_emit_interval_ms =
-      std::chrono::milliseconds(std::max(0ULL, threshold_emit_interval / 1000ULL));
-    tracing_options.threshold_emit_interval = threshold_emit_interval_ms;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_orphaned_emit_interval =
-    PyDict_GetItemString(pyObj_tracing_opts, "orphaned_emit_interval");
-  if (pyObj_orphaned_emit_interval != nullptr) {
-    auto orphaned_emit_interval =
-      static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_orphaned_emit_interval));
-    auto orphaned_emit_interval_ms =
-      std::chrono::milliseconds(std::max(0ULL, orphaned_emit_interval / 1000ULL));
-    tracing_options.orphaned_emit_interval = orphaned_emit_interval_ms;
-    has_tracing_options = true;
-  }
-
-  PyObject* pyObj_orphaned_sample_size =
-    PyDict_GetItemString(pyObj_tracing_opts, "orphaned_sample_size");
-  if (pyObj_orphaned_sample_size != nullptr) {
-    auto orphaned_sample_size =
-      static_cast<size_t>(PyLong_AsUnsignedLong(pyObj_orphaned_sample_size));
-    tracing_options.orphaned_sample_size = orphaned_sample_size;
-    has_tracing_options = true;
-  }
-
-  if (has_tracing_options) {
-    options.tracing_options = tracing_options;
-  }
-}
-
 void
 update_cluster_timeout_options(couchbase::core::cluster_options& options,
                                PyObject* pyObj_timeout_opts)
@@ -570,19 +323,9 @@ update_cluster_options(couchbase::core::cluster_options& options, PyObject* pyOb
     update_cluster_timeout_options(options, pyObj_timeout_opts);
   }
 
-  PyObject* pyObj_tracing_opts = PyDict_GetItemString(pyObj_options, "tracing_options");
-  if (pyObj_tracing_opts != nullptr) {
-    update_cluster_tracing_options(options, pyObj_tracing_opts);
-  }
-
   PyObject* pyObj_security_opts = PyDict_GetItemString(pyObj_options, "security_options");
   if (pyObj_security_opts != nullptr) {
     update_cluster_security_options(options, pyObj_security_opts);
-  }
-
-  PyObject* pyObj_emit_interval = PyDict_GetItemString(pyObj_options, "emit_interval");
-  if (pyObj_emit_interval != nullptr) {
-    update_cluster_logging_meter_options(options, pyObj_emit_interval);
   }
 
   PyObject* pyObj_disable_mozilla_ca_certificates =
@@ -608,16 +351,6 @@ update_cluster_options(couchbase::core::cluster_options& options, PyObject* pyOb
   if (pyObj_enable_clustermap_notification != nullptr &&
       pyObj_enable_clustermap_notification == Py_False) {
     options.enable_clustermap_notification = false;
-  }
-
-  PyObject* pyObj_enable_tracing = PyDict_GetItemString(pyObj_options, "enable_tracing");
-  if (pyObj_enable_tracing != nullptr && pyObj_enable_tracing == Py_False) {
-    options.enable_tracing = false;
-  }
-
-  PyObject* pyObj_enable_metrics = PyDict_GetItemString(pyObj_options, "enable_metrics");
-  if (pyObj_enable_metrics != nullptr && pyObj_enable_metrics == Py_False) {
-    options.enable_metrics = false;
   }
 
   PyObject* pyObj_network = PyDict_GetItemString(pyObj_options, "network");
@@ -651,16 +384,6 @@ update_cluster_options(couchbase::core::cluster_options& options, PyObject* pyOb
     options.user_agent_extra = user_agent_extra;
   }
 
-  // PyObject* pyObj_tracer = PyDict_GetItemString(pyObj_options, "tracer");
-  // if (pyObj_tracer != nullptr) {
-  //   options.tracer = std::make_shared<pycbc::request_tracer>(pyObj_tracer);
-  // }
-
-  // PyObject* pyObj_meter = PyDict_GetItemString(pyObj_options, "meter");
-  // if (pyObj_meter != nullptr) {
-  //   options.meter = std::make_shared<pycbc::meter>(pyObj_meter);
-  // }
-
   PyObject* pyObj_dns_nameserver = PyDict_GetItemString(pyObj_options, "dns_nameserver");
   PyObject* pyObj_dns_port = PyDict_GetItemString(pyObj_options, "dns_port");
   PyObject* pyObj_dns_srv_timeout = nullptr;
@@ -688,6 +411,10 @@ update_cluster_options(couchbase::core::cluster_options& options, PyObject* pyOb
   if (pyObj_dump_configuration != nullptr && pyObj_dump_configuration == Py_True) {
     options.dump_configuration = true;
   }
+
+  // disable tracing and metrics for now
+  options.enable_tracing = false;
+  options.enable_metrics = false;
 }
 
 PyObject*
@@ -813,49 +540,9 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
   }
   Py_XDECREF(pyObj_tmp);
 
-  int_msec = opts.key_value_timeout;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "key_value_timeout", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = opts.key_value_durable_timeout;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "key_value_durable_timeout", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = opts.view_timeout;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "view_timeout", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = opts.query_timeout;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "query_timeout", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
   int_msec = opts.analytics_timeout;
   pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
   if (-1 == PyDict_SetItemString(pyObj_opts, "analytics_timeout", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = opts.search_timeout;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "search_timeout", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -877,11 +564,6 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
   }
   Py_XDECREF(pyObj_tmp);
 
-  if (-1 == PyDict_SetItemString(pyObj_opts, "enable_tls", opts.enable_tls ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
   pyObj_tmp = PyUnicode_FromString(opts.trust_certificate.c_str());
   if (-1 == PyDict_SetItemString(pyObj_opts, "trust_certificate", pyObj_tmp)) {
     PyErr_Print();
@@ -892,20 +574,6 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
   if (-1 == PyDict_SetItemString(pyObj_opts,
                                  "disable_mozilla_ca_certificates",
                                  opts.disable_mozilla_ca_certificates ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
-  if (-1 == PyDict_SetItemString(pyObj_opts,
-                                 "enable_mutation_tokens",
-                                 opts.enable_mutation_tokens ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
-  if (-1 == PyDict_SetItemString(pyObj_opts,
-                                 "enable_tcp_keep_alive",
-                                 opts.enable_tcp_keep_alive ? Py_True : Py_False)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -923,40 +591,9 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
     PyErr_Clear();
   }
 
-  if (-1 ==
-      PyDict_SetItemString(pyObj_opts, "show_queries", opts.show_queries ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
-  if (-1 == PyDict_SetItemString(pyObj_opts,
-                                 "enable_unordered_execution",
-                                 opts.enable_unordered_execution ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
   if (-1 == PyDict_SetItemString(pyObj_opts,
                                  "enable_clustermap_notification",
                                  opts.enable_clustermap_notification ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
-  if (-1 == PyDict_SetItemString(
-              pyObj_opts, "enable_compression", opts.enable_compression ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
-  if (-1 == PyDict_SetItemString(
-              pyObj_opts, "enable_tracing", opts.enable_tracing ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
-  if (-1 == PyDict_SetItemString(
-              pyObj_opts, "enable_metrics", opts.enable_metrics ? Py_True : Py_False)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -968,42 +605,8 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
   }
   Py_XDECREF(pyObj_tmp);
 
-  pyObj_tmp = get_tracing_options(opts.tracing_options);
-  if (-1 == PyDict_SetItemString(pyObj_opts, "tracing_options", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  pyObj_tmp = get_metrics_options(opts.metrics_options);
-  if (-1 == PyDict_SetItemString(pyObj_opts, "metrics_options", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
   pyObj_tmp = tls_verify_mode_to_pyObj(opts.tls_verify);
   if (-1 == PyDict_SetItemString(pyObj_opts, "tls_verify", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  if (-1 ==
-      PyDict_SetItemString(pyObj_opts, "has_tracer", opts.tracer != nullptr ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
-  if (-1 ==
-      PyDict_SetItemString(pyObj_opts, "has_meter", opts.meter != nullptr ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
-  int_msec = opts.tcp_keep_alive_interval;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "tcp_keep_alive_interval", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -1020,29 +623,6 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
   int_msec = opts.config_poll_floor;
   pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
   if (-1 == PyDict_SetItemString(pyObj_opts, "config_poll_floor", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = opts.config_idle_redial_timeout;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "config_idle_redial_timeout", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  pyObj_tmp = PyLong_FromSize_t(opts.max_http_connections);
-  if (-1 == PyDict_SetItemString(pyObj_opts, "max_http_connections", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = opts.idle_http_connection_timeout;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "idle_http_connection_timeout", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
