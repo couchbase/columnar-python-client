@@ -20,6 +20,7 @@
 #include "client.hxx"
 #include "utils.hxx"
 #include <core/columnar/query_result.hxx>
+#include <core/pending_operation.hxx>
 #include <core/scan_result.hxx>
 
 struct result {
@@ -34,16 +35,28 @@ PyObject*
 create_result_obj();
 
 struct columnar_query_iterator {
-  PyObject_HEAD std::shared_ptr<couchbase::core::columnar::query_result> query_result_;
+  PyObject_HEAD std::shared_ptr<couchbase::core::pending_operation> pending_op_;
+  std::shared_ptr<couchbase::core::columnar::query_result> query_result_;
+  std::shared_ptr<std::promise<PyObject*>> barrier_ = nullptr;
   PyObject* row_callback = nullptr;
+
+  void set_pending_operation(std::shared_ptr<couchbase::core::pending_operation> pending_op)
+  {
+    pending_op_ = pending_op;
+  }
+
+  void set_query_result(couchbase::core::columnar::query_result query_result)
+  {
+    query_result_.reset();
+    query_result_ = std::make_shared<couchbase::core::columnar::query_result>(query_result);
+  }
 };
 
 int
 pycbcc_columnar_query_iterator_type_init(PyObject** ptr);
 
-columnar_query_iterator*
-create_columnar_query_iterator_obj(couchbase::core::columnar::query_result result,
-                                   PyObject* pyObj_row_callback);
+PyObject*
+create_columnar_query_iterator_obj(PyObject* pyObj_row_callback);
 
 PyObject*
 get_columnar_query_metadata();

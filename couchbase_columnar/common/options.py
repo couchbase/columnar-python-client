@@ -231,7 +231,10 @@ class QueryOptions(QueryOptionsBase):
     Timeout will default to cluster setting if not set for the operation.
 
     Args:
+        cancel_token (:class:~`threaad.Event`, optional): None
+        cancel_poll_interval (float, optional): None
         deserializer (Deserializer, optional): None
+        lazy_execute: (bool, optional): None
         named_parameters (Dict[str, JSONType], optional): None
         positional_parameters (Iterable[JSONType], optional): None
         priority (bool, optional): None

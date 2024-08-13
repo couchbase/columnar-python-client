@@ -132,6 +132,7 @@ class ExceptionMap(Enum):
     QueryException = 4
     InternalSDKException = 5000
     UnsuccessfulOperationException = 5002
+    QueryOperationCanceledException = 5003
 
 
 PYCBCC_ERROR_MAP: Dict[int, type[ColumnarException]] = {
@@ -239,8 +240,15 @@ class ErrorMapper:
         err_ctx = None
         ctx = base_exc.error_context()
         if ctx is None:
-            exc_class = PYCBCC_ERROR_MAP.get(base_exc.err(), ColumnarException)
             err_info = base_exc.error_info()
+            if (err_info is not None
+                and 'error_msg' in err_info
+                and 'query operation' in err_info['error_msg']
+                    and 'canceled' in err_info['error_msg']):
+                exc_class = PYCBCC_ERROR_MAP.get(ExceptionMap.QueryOperationCanceledException.value)
+            else:
+                exc_class = PYCBCC_ERROR_MAP.get(base_exc.err(), ColumnarException)
+
         else:
             err_ctx = ErrorContext.from_dict(**ctx)
             err_info = base_exc.error_info()
@@ -259,7 +267,13 @@ class ErrorMapper:
             #             return exc_class(base=base)
 
         if exc_class is None:
-            exc_class = PYCBCC_ERROR_MAP.get(base_exc.err(), ColumnarException)
+            if (err_info is not None
+                and 'error_msg' in err_info
+                and 'query operation' in err_info['error_msg']
+                    and 'canceled' in err_info['error_msg']):
+                exc_class = PYCBCC_ERROR_MAP.get(ExceptionMap.QueryOperationCanceledException.value, ColumnarException)
+            else:
+                exc_class = PYCBCC_ERROR_MAP.get(base_exc.err(), ColumnarException)
 
         base = BaseColumnarException(base=base_exc, exc_info=err_info, context=str(err_ctx))
         return exc_class(base=base)

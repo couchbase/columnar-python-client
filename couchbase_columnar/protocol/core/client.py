@@ -79,7 +79,8 @@ class _CoreClient:
     def columnar_query_op(self,
                           req: QueryRequest,
                           callback: Optional[Callable[..., None]] = None,
-                          row_callback: Optional[Callable[..., None]] = None) -> Optional[CoreQueryIterator]:
+                          row_callback: Optional[Callable[..., None]] = None,
+                          run_in_background: Optional[bool] = None) -> Optional[CoreQueryIterator]:
         """
         **INTERNAL**
         """
@@ -89,4 +90,6 @@ class _CoreClient:
             final_kwargs['callback'] = callback
         if row_callback is not None:
             final_kwargs['row_callback'] = row_callback
+        if run_in_background is not None:
+            final_kwargs['run_in_background'] = run_in_background
         return columnar_query(**final_kwargs)

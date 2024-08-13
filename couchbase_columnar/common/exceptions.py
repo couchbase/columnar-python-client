@@ -431,3 +431,23 @@ class UnsuccessfulOperationException(ColumnarException):
 
     def __str__(self) -> str:
         return self.__repr__()
+
+
+class QueryOperationCanceledException(ColumnarException):
+    """
+    Raised when query (N1QL, Search, Analytics or Views) results
+    have already been iterated over.
+    """
+
+    def __init__(self,
+                 msg: Optional[str] = None,
+                 **kwargs: Unpack[ColumnarExceptionKwargs]) -> None:
+        if msg is None and 'message' not in kwargs:
+            kwargs['message'] = 'Previously iterated over results.'
+        super().__init__(**kwargs)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({super().__repr__()})"
+
+    def __str__(self) -> str:
+        return self.__repr__()

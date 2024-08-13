@@ -16,9 +16,9 @@
 from __future__ import annotations
 
 from typing import (Any,
-                    AsyncIterable,
                     Iterable,
-                    List)
+                    List,
+                    Optional)
 
 from couchbase_columnar.common.core.result import QueryResult as QueryResult
 from couchbase_columnar.common.query import QueryMetadata
@@ -28,8 +28,9 @@ from couchbase_columnar.common.streaming import (AsyncIterator,
 
 
 class BlockingQueryResult(QueryResult):
-    def __init__(self, executor: StreamingExecutor) -> None:
+    def __init__(self, executor: StreamingExecutor, lazy_execute: Optional[bool] = None) -> None:
         self._executor = executor
+        self._lazy_execute = lazy_execute
 
     def cancel(self) -> None:
         self._executor.cancel()
@@ -105,7 +106,7 @@ class AsyncQueryResult(QueryResult):
         """  # noqa: E501
         return self._executor.get_metadata()
 
-    def rows(self) -> AsyncIterable[Any]:
+    def rows(self) -> AsyncIterator:
         """The rows which have been returned by the query.
 
         .. note::

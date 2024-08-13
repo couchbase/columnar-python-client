@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import sys
+from asyncio import Future
 from typing import TYPE_CHECKING, Optional
 
 if sys.version_info < (3, 10):
@@ -58,8 +59,8 @@ class AsyncCluster:
         """
         return AsyncDatabase(self._impl, name)
 
-    async def execute_query(self, statement: str, *args: object, **kwargs: object) -> AsyncQueryResult:
-        return await self._impl.execute_query(statement, *args, **kwargs)
+    def execute_query(self, statement: str, *args: object, **kwargs: object) -> Future[AsyncQueryResult]:
+        return self._impl.execute_query(statement, *args, **kwargs)
 
     def close(self) -> None:
         return self._impl.close()

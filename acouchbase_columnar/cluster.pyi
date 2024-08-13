@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from asyncio import AbstractEventLoop
+from asyncio import AbstractEventLoop, Future
 from typing import overload
 
 from typing_extensions import Unpack
@@ -80,39 +80,39 @@ class AsyncCluster:
     def database(self, database_name: str) -> AsyncDatabase: ...
 
     @overload
-    async def execute_query(self, statement: str) -> AsyncQueryResult: ...
+    def execute_query(self, statement: str) -> Future[AsyncQueryResult]: ...
 
     @overload
-    async def execute_query(self, statement: str, options: QueryOptions) -> AsyncQueryResult: ...
+    def execute_query(self, statement: str, options: QueryOptions) -> Future[AsyncQueryResult]: ...
 
     @overload
-    async def execute_query(self, statement: str, **kwargs: Unpack[QueryOptionsKwargs]) -> AsyncQueryResult: ...
+    def execute_query(self, statement: str, **kwargs: Unpack[QueryOptionsKwargs]) -> Future[AsyncQueryResult]: ...
 
     @overload
-    async def execute_query(self,
-                            statement: str,
-                            options: QueryOptions,
-                            **kwargs: Unpack[QueryOptionsKwargs]) -> AsyncQueryResult: ...
+    def execute_query(self,
+                      statement: str,
+                      options: QueryOptions,
+                      **kwargs: Unpack[QueryOptionsKwargs]) -> Future[AsyncQueryResult]: ...
 
     @overload
-    async def execute_query(self,
-                            statement: str,
-                            options: QueryOptions,
-                            *args: str,
-                            **kwargs: Unpack[QueryOptionsKwargs]) -> AsyncQueryResult: ...
+    def execute_query(self,
+                      statement: str,
+                      options: QueryOptions,
+                      *args: str,
+                      **kwargs: Unpack[QueryOptionsKwargs]) -> Future[AsyncQueryResult]: ...
 
     @overload
-    async def execute_query(self,
-                            statement: str,
-                            options: QueryOptions,
-                            *args: str,
-                            **kwargs: str) -> AsyncQueryResult: ...
+    def execute_query(self,
+                      statement: str,
+                      options: QueryOptions,
+                      *args: str,
+                      **kwargs: str) -> Future[AsyncQueryResult]: ...
 
     @overload
-    async def execute_query(self,
-                            statement: str,
-                            *args: str,
-                            **kwargs: str) -> AsyncQueryResult: ...
+    def execute_query(self,
+                      statement: str,
+                      *args: str,
+                      **kwargs: str) -> Future[AsyncQueryResult]: ...
 
     def close(self) -> None: ...
 

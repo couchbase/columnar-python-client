@@ -17,10 +17,14 @@ from __future__ import annotations
 
 import sys
 from abc import ABC, abstractmethod
+from asyncio import Future
+from enum import IntEnum
+from threading import Event
 from typing import (Any,
                     Coroutine,
                     List,
                     NoReturn,
+                    Optional,
                     Union)
 
 if sys.version_info < (3, 9):
@@ -30,20 +34,55 @@ else:
     from collections.abc import AsyncIterator as PyAsyncIterator
     from collections.abc import Iterator
 
-from couchbase_columnar.common.exceptions import AlreadyQueriedException, ColumnarException
+from couchbase_columnar.common.exceptions import (AlreadyQueriedException,
+                                                  ColumnarException,
+                                                  QueryOperationCanceledException)
+
+# from couchbase_columnar.common.result import AsyncQueryResult
 from couchbase_columnar.common.query import QueryMetadata
+
+
+class StreamingState(IntEnum):
+    NotStarted = 0
+    Started = 1
+    Cancelled = 2
+    Completed = 3
+
+    @staticmethod
+    def okay_to_stream(state: StreamingState) -> bool:
+        return state == StreamingState.NotStarted
+
+    @staticmethod
+    def okay_to_iterate(state: StreamingState) -> bool:
+        return state == StreamingState.Started
+
+    @staticmethod
+    def get_streaming_exception(state: StreamingState) -> ColumnarException:
+        if state == StreamingState.Cancelled:
+            return QueryOperationCanceledException('Cannot stream as query operation has been canceled.')
+        return AlreadyQueriedException('Query has already previously executed.')
 
 
 class StreamingExecutor(ABC):
 
     @property
     @abstractmethod
-    def done_streaming(self) -> bool:
+    def cancel_token(self) -> Optional[Event]:
         raise NotImplementedError
 
     @property
     @abstractmethod
-    def started_streaming(self) -> bool:
+    def cancel_poll_interval(self) -> Optional[float]:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def lazy_execute(self) -> bool:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def streaming_state(self) -> StreamingState:
         raise NotImplementedError
 
     @abstractmethod
@@ -63,7 +102,7 @@ class StreamingExecutor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def submit_query(self) -> Union[Coroutine[Any, Any, None], None]:
+    def submit_query(self) -> Union[Future[Any], None]:
         raise NotImplementedError
 
     @abstractmethod
@@ -79,10 +118,7 @@ class BlockingIterator(Iterator[Any]):
         return [r for r in list(self)]
 
     def __iter__(self) -> BlockingIterator:
-        if self._executor.done_streaming:
-            raise AlreadyQueriedException()
-
-        if not self._executor.started_streaming:
+        if self._executor.lazy_execute is True:
             self._executor.submit_query()
 
         return self
@@ -108,19 +144,14 @@ class AsyncIterator(PyAsyncIterator[Any]):
         return [r async for r in self]
 
     def __aiter__(self) -> AsyncIterator:
-        if self._executor.done_streaming:
-            raise AlreadyQueriedException()
-
-        # if not self._executor.started_streaming:
-        #     self._executor.submit_query()
-
         return self
 
     async def __anext__(self) -> Any:
         try:
             return await self._executor.get_next_row()
         except StopAsyncIteration:
-            self._executor.set_metadata()
+            # TODO:  get metadata automatically?
+            # self._executor.set_metadata()
             raise
         except ColumnarException as ex:
             raise ex

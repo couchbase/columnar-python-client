@@ -13,7 +13,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import overload
+from concurrent.futures import Future
+from threading import Event
+from typing import Optional, overload
 
 from typing_extensions import Unpack
 
@@ -35,16 +37,21 @@ class Scope:
     def execute_query(self, statement: str) -> BlockingQueryResult: ...
 
     @overload
-    def execute_query(self, statement: str, options: QueryOptions) -> BlockingQueryResult: ...
+    def execute_query(self,
+                      statement: str,
+                      options: QueryOptions) -> BlockingQueryResult: ...
 
     @overload
-    def execute_query(self, statement: str, **kwargs: Unpack[QueryOptionsKwargs]) -> BlockingQueryResult: ...
+    def execute_query(self,
+                      statement: str,
+                      **kwargs: Unpack[QueryOptionsKwargs]) -> BlockingQueryResult: ...
 
     @overload
     def execute_query(self,
                       statement: str,
                       options: QueryOptions,
-                      **kwargs: Unpack[QueryOptionsKwargs]) -> BlockingQueryResult: ...
+                      **kwargs: Unpack[QueryOptionsKwargs]
+                      ) -> BlockingQueryResult: ...
 
     @overload
     def execute_query(self,
@@ -65,3 +72,57 @@ class Scope:
                       statement: str,
                       *args: str,
                       **kwargs: str) -> BlockingQueryResult: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      cancel_token: Event,
+                      cancel_poll_interval: Optional[float]=None) -> Future[BlockingQueryResult]: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      options: QueryOptions,
+                      cancel_token: Event,
+                      cancel_poll_interval: Optional[float]=None) -> Future[BlockingQueryResult]: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      cancel_token: Event,
+                      cancel_poll_interval: Optional[float]=None,
+                      **kwargs: Unpack[QueryOptionsKwargs]) -> Future[BlockingQueryResult]: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      options: QueryOptions,
+                      cancel_token: Event,
+                      cancel_poll_interval: Optional[float]=None,
+                      **kwargs: Unpack[QueryOptionsKwargs]) -> Future[BlockingQueryResult]: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      options: QueryOptions,
+                      *args: str,
+                      cancel_token: Event,
+                      cancel_poll_interval: Optional[float]=None,
+                      **kwargs: Unpack[QueryOptionsKwargs]) -> Future[BlockingQueryResult]: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      options: QueryOptions,
+                      *args: str,
+                      cancel_token: Event,
+                      cancel_poll_interval: Optional[float]=None,
+                      **kwargs: str) -> Future[BlockingQueryResult]: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      *args: str,
+                      cancel_token: Event,
+                      cancel_poll_interval: Optional[float]=None,
+                      **kwargs: str) -> Future[BlockingQueryResult]: ...

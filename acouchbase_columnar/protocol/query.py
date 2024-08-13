@@ -16,14 +16,17 @@
 from __future__ import annotations
 
 from asyncio import Future
+from threading import Event
 from typing import (TYPE_CHECKING,
                     Any,
                     NoReturn,
-                    Optional)
+                    Optional,
+                    Union)
 
 from couchbase_columnar.common.exceptions import ColumnarException
 from couchbase_columnar.common.query import QueryMetadata
-from couchbase_columnar.common.streaming import StreamingExecutor
+from couchbase_columnar.common.result import AsyncQueryResult
+from couchbase_columnar.common.streaming import StreamingExecutor, StreamingState
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
 from couchbase_columnar.protocol.exceptions import (PYCBCC_ERROR_MAP,
                                                     CoreColumnarException,
@@ -50,25 +53,45 @@ class _AsyncQueryStreamingExecutor(StreamingExecutor):
         self._loop = loop
         self._request = request
         self._query_iter: CoreQueryIterator
-        self._started_streaming = False
         self._deserializer = request.deserializer
-        self._done_streaming = False
         self._metadata: Optional[QueryMetadata] = None
-        self._iter_ft: Future[CoreQueryIterator]
+        self._streaming_state = StreamingState.NotStarted
         self._row_ft: Future[Any]
 
     @property
-    def done_streaming(self) -> bool:
-        return self._done_streaming
+    def cancel_token(self) -> Optional[Event]:
+        """
+            **INTERNAL**
+        """
+        return None
 
     @property
-    def started_streaming(self) -> bool:
-        return self._started_streaming
+    def cancel_poll_interval(self) -> Optional[float]:
+        """
+            **INTERNAL**
+        """
+        return None
+
+    @property
+    def lazy_execute(self) -> bool:
+        """
+            **INTERNAL**
+        """
+        return False
+
+    @property
+    def streaming_state(self) -> StreamingState:
+        """
+            **INTERNAL**
+        """
+        return self._streaming_state
 
     def cancel(self) -> None:
         if self._query_iter is None:
             return
         self._query_iter.cancel()
+        print('cancelled request')
+        self._streaming_state = StreamingState.Cancelled
 
     def get_metadata(self) -> QueryMetadata:
         # TODO:  Maybe not needed if we get metadata automatically?
@@ -102,30 +125,36 @@ class _AsyncQueryStreamingExecutor(StreamingExecutor):
             return
         self._metadata = QueryMetadata(query_metadata)
 
-    async def submit_query(self) -> None:
-        if self._done_streaming:
-            return
-        self._started_streaming = True
-        self._client.columnar_query_op(self._request,
-                                       callback=self._iter_callback,
-                                       row_callback=self._row_callback)
-        self._iter_ft = self._loop.create_future()
-        res = await self._iter_ft
+    def submit_query(self) -> Future[AsyncQueryResult]:
+        if not StreamingState.okay_to_stream(self._streaming_state):
+            raise StreamingState.get_streaming_exception(self._streaming_state)
 
-        if not isinstance(res, CoreQueryIterator):
+        self._streaming_state = StreamingState.Started
+        query_iter = self._client.columnar_query_op(self._request,
+                                                    callback=self._set_query_core_result,
+                                                    row_callback=self._row_callback)
+
+        if not isinstance(query_iter, CoreQueryIterator):
             # TODO:  better exception
             raise ValueError('Columnar query op unsuccessful.')
-        self._query_iter = res
+
+        self._query_iter = query_iter
+
+        self._iter_ft: Future[AsyncQueryResult] = self._loop.create_future()
+        return self._iter_ft
 
     async def get_next_row(self) -> Any:
         return await self._get_next_row()
 
-    def _iter_callback(self, res: Any) -> None:
+    def _set_query_core_result(self, res:  Union[bool, ColumnarException]) -> None:
+        if self._iter_ft.cancelled():
+            return
+
         if isinstance(res, CoreColumnarException):
             exc = ErrorMapper.build_exception(res)
             self._loop.call_soon_threadsafe(self._iter_ft.set_exception, exc)
         else:
-            self._loop.call_soon_threadsafe(self._iter_ft.set_result, res)
+            self._loop.call_soon_threadsafe(self._iter_ft.set_result, AsyncQueryResult(self))
 
     def _row_callback(self, row: Any) -> None:
         if isinstance(row, CoreColumnarException):
@@ -135,8 +164,8 @@ class _AsyncQueryStreamingExecutor(StreamingExecutor):
             self._loop.call_soon_threadsafe(self._row_ft.set_result, row)
 
     async def _get_next_row(self) -> Any:
-        if self._done_streaming is True or self._query_iter is None:
-            return
+        if self._query_iter is None or not StreamingState.okay_to_iterate(self._streaming_state):
+            raise StopAsyncIteration
 
         self._row_ft = self._loop.create_future()
         next(self._query_iter)
@@ -146,12 +175,3 @@ class _AsyncQueryStreamingExecutor(StreamingExecutor):
             raise StopAsyncIteration
 
         return self._deserializer.deserialize(row)
-
-    @classmethod
-    async def create_executor(cls,
-                              client: _CoreClient,
-                              loop: AbstractEventLoop,
-                              request: QueryRequest) -> _AsyncQueryStreamingExecutor:
-        executor = cls(client, loop, request)
-        await executor.submit_query()
-        return executor

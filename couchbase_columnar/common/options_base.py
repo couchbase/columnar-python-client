@@ -330,6 +330,7 @@ class TracingOptionsBase(Dict[str, object]):
 
 class QueryOptionsKwargs(TypedDict, total=False):
     deserializer: Optional[Deserializer]
+    lazy_execute: Optional[bool]
     named_parameters: Optional[Dict[str, JSONType]]
     positional_parameters: Optional[Iterable[JSONType]]
     priority: Optional[bool]
@@ -342,6 +343,7 @@ class QueryOptionsKwargs(TypedDict, total=False):
 
 QueryOptionsValidKeys: TypeAlias = Literal[
     'deserializer',
+    'lazy_execute',
     'named_parameters',
     'positional_parameters',
     'priority',
@@ -357,6 +359,7 @@ class QueryOptionsBase(Dict[str, object]):
 
     VALID_OPTION_KEYS: List[QueryOptionsValidKeys] = [
         'deserializer',
+        'lazy_execute',
         'named_parameters',
         'positional_parameters',
         'priority',
@@ -375,6 +378,7 @@ class QueryOptionsBase(Dict[str, object]):
     def __init__(self,
                  *,
                  deserializer: Optional[Deserializer] = None,
+                 lazy_execute: Optional[bool] = None,
                  named_parameters: Optional[Dict[str, JSONType]] = None,
                  positional_parameters: Optional[Iterable[JSONType]] = None,
                  priority: Optional[bool] = None,
