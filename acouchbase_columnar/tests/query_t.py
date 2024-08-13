@@ -39,6 +39,7 @@ class QueryTestSuite:
         'test_query_raw_options',
         'test_simple_query',
         'test_query_metadata',
+        'test_query_metadata_not_available',
     ]
 
     @pytest.mark.asyncio
@@ -112,8 +113,6 @@ class QueryTestSuite:
 
         metadata = result.metadata()
 
-        assert metadata is not None
-
         assert len(metadata.warnings()) == 0
         assert len(metadata.request_id()) > 0
 
@@ -124,6 +123,28 @@ class QueryTestSuite:
         assert metrics.processed_objects() > 0
         assert metrics.elapsed_time() > timedelta(0)
         assert metrics.execution_time() > timedelta(0)
+
+    @pytest.mark.asyncio
+    async def test_query_metadata_not_available(self, test_env: AsyncTestEnvironment) -> None:
+        statement = f'SELECT * FROM {test_env.fqdn} LIMIT 5;'
+        result = await test_env.cluster.execute_query(statement)
+
+        with pytest.raises(RuntimeError):
+            result.metadata()
+
+        # Read one row
+        await anext(aiter(result.rows()))
+
+        with pytest.raises(RuntimeError):
+            result.metadata()
+
+        # Iterate the rest of the rows
+        rows = [r async for r in result.rows()]
+        assert len(rows) == 4
+
+        metadata = result.metadata()
+        assert len(metadata.warnings()) == 0
+        assert len(metadata.request_id()) > 0
 
 
 class QueryTests(QueryTestSuite):

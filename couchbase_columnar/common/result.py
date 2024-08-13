@@ -18,8 +18,7 @@ from __future__ import annotations
 from typing import (Any,
                     AsyncIterable,
                     Iterable,
-                    List,
-                    Optional)
+                    List)
 
 from couchbase_columnar.common.core.result import QueryResult as QueryResult
 from couchbase_columnar.common.query import QueryMetadata
@@ -47,11 +46,14 @@ class BlockingQueryResult(QueryResult):
         """
         return BlockingIterator(self._executor).get_all_rows()
 
-    def metadata(self) -> Optional[QueryMetadata]:
+    def metadata(self) -> QueryMetadata:
         """The meta-data which has been returned by the query.
 
         Returns:
             :class:`~couchbase_columnar.query.QueryMetadata`: An instance of :class:`~couchbase_columnar.query.QueryMetadata`.
+
+        Raises:
+            :class:`RuntimeError`: When the metadata is not available. Metadata is only available once all rows have been iterated.
         """  # noqa: E501
         return self._executor.get_metadata()
 
@@ -92,11 +94,14 @@ class AsyncQueryResult(QueryResult):
         """
         return await AsyncIterator(self._executor).get_all_rows()
 
-    def metadata(self) -> Optional[QueryMetadata]:
+    def metadata(self) -> QueryMetadata:
         """The meta-data which has been returned by the query.
 
         Returns:
             :class:`~couchbase_columnar.query.QueryMetadata`: An instance of :class:`~couchbase_columnar.query.QueryMetadata`.
+
+        Raises:
+            :class:`RuntimeError`: When the metadata is not available. Metadata is only available once all rows have been iterated.
         """  # noqa: E501
         return self._executor.get_metadata()
 

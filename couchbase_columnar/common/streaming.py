@@ -21,7 +21,6 @@ from typing import (Any,
                     Coroutine,
                     List,
                     NoReturn,
-                    Optional,
                     Union)
 
 if sys.version_info < (3, 9):
@@ -52,7 +51,7 @@ class StreamingExecutor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_metadata(self) -> Optional[QueryMetadata]:
+    def get_metadata(self) -> QueryMetadata:
         raise NotImplementedError
 
     @abstractmethod
