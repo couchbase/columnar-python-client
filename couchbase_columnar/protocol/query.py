@@ -64,10 +64,12 @@ class _QueryStreamingExecutor(StreamingExecutor):
             return
         self._query_iter.cancel()
 
-    def get_metadata(self) -> Optional[QueryMetadata]:
+    def get_metadata(self) -> QueryMetadata:
         # TODO:  Maybe not needed if we get metadata automatically?
         if self._metadata is None:
             self.set_metadata()
+            if self._metadata is None:
+                raise RuntimeError('Query metadata is only available after all rows have been iterated.')
         return self._metadata
 
     def handle_exception(self, ex: Exception) -> NoReturn:
@@ -91,8 +93,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
         if isinstance(query_metadata, CoreColumnarException):
             raise ErrorMapper.build_exception(query_metadata)
         if query_metadata is None:
-            # TODO:  better exception
-            raise ColumnarException.from_message('Metadata unavailable.')
+            return
         self._metadata = QueryMetadata(query_metadata)
 
     def submit_query(self) -> None:
