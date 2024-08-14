@@ -23,6 +23,7 @@ from typing import (TYPE_CHECKING,
                     Callable,
                     Dict,
                     Optional,
+                    Tuple,
                     Union)
 
 if sys.version_info < (3, 10):
@@ -32,6 +33,7 @@ else:
 
 from couchbase_columnar.common.deserializer import Deserializer
 from couchbase_columnar.common.options import QueryOptions
+from couchbase_columnar.common.query import CancelToken
 from couchbase_columnar.protocol.options import ClusterOptionsTransformedKwargs, QueryOptionsTransformedKwargs
 
 if TYPE_CHECKING:
@@ -123,15 +125,24 @@ class ClusterRequestBuilder:
     def build_query_request(self,  # noqa: C901
                             statement: str,
                             *args: object,
-                            **kwargs: object) -> QueryRequest:  # noqa: C901
+                            **kwargs: object) -> Tuple[QueryRequest, Optional[CancelToken]]:  # noqa: C901
+        cancel_token: Optional[CancelToken] = None
+        kwarg_token = kwargs.pop('cancel_token', None)
+        if isinstance(kwarg_token, CancelToken):
+            cancel_token = kwarg_token
+
         # default if no options provided
         opts = QueryOptions()
         args_list = list(args)
+        parsed_args_list = []
         for arg in args_list:
             if isinstance(arg, QueryOptions):
                 # we have options passed in
                 opts = arg
-                args_list.remove(arg)
+            elif cancel_token is None and isinstance(arg, CancelToken):
+                cancel_token = arg
+            else:
+                parsed_args_list.append(arg)
 
         # need to pop out named params prior to sending options to the builder
         named_param_keys = list(filter(lambda k: k not in QueryOptions.VALID_OPTION_KEYS, kwargs.keys()))
@@ -144,8 +155,8 @@ class ClusterRequestBuilder:
                                                   kwargs,
                                                   opts)
         # positional params and named params passed in outside of QueryOptions serve as overrides
-        if args_list and len(args_list) > 0:
-            q_opts['positional_parameters'] = args_list
+        if parsed_args_list and len(parsed_args_list) > 0:
+            q_opts['positional_parameters'] = parsed_args_list
         if named_params and len(named_params) > 0:
             q_opts['named_parameters'] = named_params
         # add the default serializer if one does not exist
@@ -156,9 +167,7 @@ class ClusterRequestBuilder:
             if k != 'deserializer':
                 final_opts[k] = v
 
-        return QueryRequest(statement,
-                            deserializer,
-                            options=q_opts)
+        return QueryRequest(statement, deserializer, options=q_opts), cancel_token
 
     @staticmethod
     def to_req_dict(request: ClusterRequest) -> Dict[str, Any]:
@@ -190,15 +199,24 @@ class ScopeRequestBuilder:
     def build_query_request(self,  # noqa: C901
                             statement: str,
                             *args: object,
-                            **kwargs: object) -> QueryRequest:  # noqa: C901
+                            **kwargs: object) -> Tuple[QueryRequest, Optional[CancelToken]]:  # noqa: C901
+        cancel_token: Optional[CancelToken] = None
+        kwarg_token = kwargs.pop('cancel_token', None)
+        if isinstance(kwarg_token, CancelToken):
+            cancel_token = kwarg_token
+
         # default if no options provided
         opts = QueryOptions()
         args_list = list(args)
+        parsed_args_list = []
         for arg in args_list:
             if isinstance(arg, QueryOptions):
                 # we have options passed in
                 opts = arg
-                args_list.remove(arg)
+            elif cancel_token is None and isinstance(arg, CancelToken):
+                cancel_token = arg
+            else:
+                parsed_args_list.append(arg)
 
         # need to pop out named params prior to sending options to the builder
         named_param_keys = list(filter(lambda k: k not in QueryOptions.VALID_OPTION_KEYS, kwargs.keys()))
@@ -211,8 +229,8 @@ class ScopeRequestBuilder:
                                                   kwargs,
                                                   opts)
         # positional params and named params passed in outside of QueryOptions serve as overrides
-        if args_list and len(args_list) > 0:
-            q_opts['positional_parameters'] = args_list
+        if parsed_args_list and len(parsed_args_list) > 0:
+            q_opts['positional_parameters'] = parsed_args_list
         if named_params and len(named_params) > 0:
             q_opts['named_parameters'] = named_params
         # add the default serializer if one does not exist
@@ -223,11 +241,12 @@ class ScopeRequestBuilder:
             if k != 'deserializer':
                 final_opts[k] = v
 
-        return QueryRequest(statement,
-                            deserializer,
-                            options=q_opts,
-                            database_name=self._database_name,
-                            scope_name=self._scope_name)
+        return (QueryRequest(statement,
+                             deserializer,
+                             options=q_opts,
+                             database_name=self._database_name,
+                             scope_name=self._scope_name),
+                cancel_token)
 
     @staticmethod
     def to_req_dict(request: ClusterRequest) -> Dict[str, Any]:

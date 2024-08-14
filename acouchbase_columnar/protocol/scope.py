@@ -55,19 +55,12 @@ class AsyncScope:
         """
         return self._scope_name
 
-    # async def execute_query(self, statement: str, *args: object, **kwargs: object) -> AsyncQueryResult:
-    #     req = self._request_builder.build_query_request(statement, *args, **kwargs)
-    #     executor = await _AsyncQueryStreamingExecutor.create_executor(self.client_adapter.client,
-    #                                                                   self.client_adapter.loop,
-    #                                                                   req)
-    #     return AsyncQueryResult(executor)
-
     def _query_done_callback(self, executor: _AsyncQueryStreamingExecutor, ft: Future) -> None:
         if ft.cancelled():
             executor.cancel()
 
     def execute_query(self, statement: str, *args: object, **kwargs: object) -> Future[AsyncQueryResult]:
-        req = self._request_builder.build_query_request(statement, *args, **kwargs)
+        req, _ = self._request_builder.build_query_request(statement, *args, **kwargs)
         executor = _AsyncQueryStreamingExecutor(self.client_adapter.client,
                                                 self.client_adapter.loop,
                                                 req)

@@ -24,7 +24,7 @@ from typing import (TYPE_CHECKING,
                     Union)
 
 from couchbase_columnar.common.exceptions import ColumnarException, QueryOperationCanceledException
-from couchbase_columnar.common.query import QueryMetadata
+from couchbase_columnar.common.query import CancelToken, QueryMetadata
 from couchbase_columnar.common.streaming import StreamingExecutor, StreamingState
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
 from couchbase_columnar.protocol.exceptions import (PYCBCC_ERROR_MAP,
@@ -45,8 +45,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
     def __init__(self,
                  client: _CoreClient,
                  request: QueryRequest,
-                 cancel_token: Optional[Event] = None,
-                 cancel_poll_interval: Optional[float] = None,
+                 cancel_token: Optional[CancelToken] = None,
                  lazy_execute: Optional[bool] = None) -> None:
         self._client = client
         self._request = request
@@ -57,8 +56,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
             self._lazy_execute = False
         self._streaming_state = StreamingState.NotStarted
         self._metadata: Optional[QueryMetadata] = None
-        self._cancel_token: Optional[Event] = cancel_token
-        self._cancel_poll_interval: Optional[float] = cancel_poll_interval
+        self._cancel_token: Optional[CancelToken] = cancel_token
         self._query_iter: CoreQueryIterator
         self._tp_executor = ThreadPoolExecutor(max_workers=2)
         self._query_res_ft: Future[Union[bool, ColumnarException]]
@@ -68,14 +66,18 @@ class _QueryStreamingExecutor(StreamingExecutor):
         """
             **INTERNAL**
         """
-        return self._cancel_token
+        if self._cancel_token is not None:
+            return self._cancel_token.token
+        return None
 
     @property
     def cancel_poll_interval(self) -> Optional[float]:
         """
             **INTERNAL**
         """
-        return self._cancel_poll_interval
+        if self._cancel_token is not None:
+            return self._cancel_token.poll_interval
+        return None
 
     @property
     def lazy_execute(self) -> bool:
@@ -99,8 +101,8 @@ class _QueryStreamingExecutor(StreamingExecutor):
             return
         self._query_iter.cancel()
         # this shouldn't be possible, but check if the cancel_token should be set just in case
-        if self._cancel_token is not None and not self._cancel_token.is_set():
-            self._cancel_token.set()
+        if self._cancel_token is not None and not self._cancel_token.token.is_set():
+            self._cancel_token.token.set()
         self._streaming_state = StreamingState.Cancelled
 
     def get_metadata(self) -> QueryMetadata:
@@ -179,11 +181,11 @@ class _QueryStreamingExecutor(StreamingExecutor):
         if self._cancel_token is None:
             raise ValueError('Cannot wait in background if cancel token not provided.')
 
-        if self._cancel_poll_interval is None:
-            self._cancel_poll_interval = 0.25
+        if self._cancel_token.poll_interval is None:
+            self._cancel_token.poll_interval = 0.25
 
         while not self._query_res_ft.done() and self._streaming_state != StreamingState.Cancelled:
-            if self._cancel_token.wait(self._cancel_poll_interval):
+            if self._cancel_token.token.wait(self._cancel_token.poll_interval):
                 # this means we want to cancel
                 self.cancel()
 
@@ -217,7 +219,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
         if self._query_iter is None or not StreamingState.okay_to_iterate(self._streaming_state):
             raise StopIteration
 
-        if self._cancel_token is not None and self._cancel_token.is_set():
+        if self._cancel_token is not None and self._cancel_token.token.is_set():
             self.cancel()
             raise StopIteration
 

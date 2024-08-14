@@ -111,10 +111,12 @@ class QueryTestSuite:
         assert res._executor.streaming_state == expected_state
 
     @pytest.mark.asyncio
-    async def test_query_metadata(self, test_env: AsyncTestEnvironment) -> None:
-        statement = f'SELECT * FROM {test_env.fqdn} LIMIT 2;'
-        result = await test_env.cluster_or_scope.execute_query(statement)
-        await test_env.assert_rows(result, 2)
+    async def test_query_metadata(self,
+                                  test_env: AsyncTestEnvironment,
+                                  query_statement_limit5: str) -> None:
+        result = await test_env.cluster_or_scope.execute_query(query_statement_limit5)
+        expected_count = 5
+        await test_env.assert_rows(result, expected_count)
 
         metadata = result.metadata()
 
@@ -124,15 +126,16 @@ class QueryTestSuite:
         metrics = metadata.metrics()
 
         assert metrics.result_size() > 0
-        assert metrics.result_count() == 2
+        assert metrics.result_count() == expected_count
         assert metrics.processed_objects() > 0
         assert metrics.elapsed_time() > timedelta(0)
         assert metrics.execution_time() > timedelta(0)
 
     @pytest.mark.asyncio
-    async def test_query_metadata_not_available(self, test_env: AsyncTestEnvironment) -> None:
-        statement = f'SELECT * FROM {test_env.fqdn} LIMIT 5;'
-        result = await test_env.cluster.execute_query(statement)
+    async def test_query_metadata_not_available(self,
+                                                test_env: AsyncTestEnvironment,
+                                                query_statement_limit5: str) -> None:
+        result = await test_env.cluster_or_scope.execute_query(query_statement_limit5)
 
         with pytest.raises(RuntimeError):
             result.metadata()

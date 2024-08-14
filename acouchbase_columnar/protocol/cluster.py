@@ -98,7 +98,7 @@ class AsyncCluster:
             executor.cancel()
 
     def execute_query(self, statement: str, *args: object, **kwargs: object) -> Future[AsyncQueryResult]:
-        req = self._request_builder.build_query_request(statement, *args, **kwargs)
+        req, _ = self._request_builder.build_query_request(statement, *args, **kwargs)
         executor = _AsyncQueryStreamingExecutor(self.client_adapter.client,
                                                 self.client_adapter.loop,
                                                 req)
