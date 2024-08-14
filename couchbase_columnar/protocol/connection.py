@@ -144,6 +144,7 @@ class _ConnectionDetails:
     cluster_options: ClusterOptionsTransformedKwargs
     credential: Dict[str, str]
     default_deserializer: Deserializer
+    enable_dns_srv: Optional[bool] = None
 
     # TODO:  is this needed?  If so, need to flesh out the validation matrix
     def validate_security_options(self) -> None:
@@ -162,6 +163,10 @@ class _ConnectionDetails:
                options: Optional[object] = None,
                **kwargs: object) -> _ConnectionDetails:
         connection_str, query_str_opts = parse_connection_string(connstr)
+        srv = query_str_opts.pop('srv', None)
+        enable_dns_srv: Optional[bool] = None
+        if srv is False:
+            enable_dns_srv = srv
         kwargs.update(query_str_opts)
 
         cluster_opts = opts_builder.build_cluster_options(ClusterOptions,
@@ -186,6 +191,7 @@ class _ConnectionDetails:
         conn_dtls = cls(connection_str,
                         cluster_opts,
                         credential.asdict(),
-                        default_deserializer)
+                        default_deserializer,
+                        enable_dns_srv=enable_dns_srv)
         conn_dtls.validate_security_options()
         return conn_dtls

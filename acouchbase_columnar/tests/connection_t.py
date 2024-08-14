@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Optional
 
 import pytest
 
@@ -27,6 +27,7 @@ from acouchbase_columnar.protocol.core.client_adapter import _ClientAdapter
 class ConnectionTestSuite:
     TEST_MANIFEST = [
         'test_connection_string_options',
+        'test_dns_srv_disabled',
         'test_invalid_connection_strings',
         'test_valid_connection_strings',
     ]
@@ -48,6 +49,42 @@ class ConnectionTestSuite:
         assert 'python/' in user_agent
         expected_conn_str = connstr.split('?')[0]
         assert expected_conn_str == client.connection_details.connection_str
+
+    @pytest.mark.parametrize('connstr, expected_opts, enable_dns_srv',
+                             [('couchbases://localhost?dns_nameserver=127.0.0.1&dump_configuration=true',
+                               {'dns_nameserver': '127.0.0.1', 'dump_configuration': True},
+                               None),
+                              ('couchbases://localhost?srv=false&dump_configuration=true',
+                               {'dump_configuration': True},
+                               False),
+                              ('couchbases://localhost?an_invalid_option=10',
+                               {},
+                               None),
+                              ('couchbases://localhost?srv=False&an_invalid_option=10',
+                               {},
+                               False),
+                              ('couchbases://localhost',
+                               {},
+                               None),
+                              ('couchbases://localhost?srv=false',
+                               {},
+                               False),
+                              ])
+    def test_dns_srv_disabled(self,
+                              connstr: str,
+                              expected_opts: Dict[str, object],
+                              enable_dns_srv: Optional[bool]) -> None:
+        cred = Credential.from_username_and_password('Administrator', 'password')
+        client = _ClientAdapter(connstr, cred)
+
+        user_agent = client.connection_details.cluster_options.pop('user_agent_extra', None)
+        assert expected_opts == client.connection_details.cluster_options
+        assert user_agent is not None
+        assert 'pycbcc/' in user_agent
+        assert 'python/' in user_agent
+        expected_conn_str = connstr.split('?')[0]
+        assert expected_conn_str == client.connection_details.connection_str
+        assert client.connection_details.enable_dns_srv == enable_dns_srv
 
     @pytest.mark.parametrize('connstr', ['10.0.0.1:8091',
                                          'http://host1',

@@ -36,9 +36,7 @@ from typing_extensions import Unpack
 
 from couchbase_columnar.common import JSONType
 from couchbase_columnar.common.deserializer import Deserializer
-from couchbase_columnar.common.enums import (IpProtocol,
-                                             QueryScanConsistency,
-                                             TLSVerifyMode)
+from couchbase_columnar.common.enums import IpProtocol, QueryScanConsistency
 
 """
     Python Columnar SDK Cluster Options Classes
@@ -55,17 +53,10 @@ class ClusterOptionsKwargs(TypedDict, total=False):
     dns_port: Optional[int]
     dump_configuration: Optional[bool]
     enable_clustermap_notification: Optional[bool]
-    enable_dns_srv: Optional[bool]
-    enable_metrics: Optional[bool]
-    enable_tracing: Optional[bool]
     ip_protocol: Optional[Union[IpProtocol, str]]
-    logging_meter_emit_interval: Optional[timedelta]
-    log_redaction: Optional[bool]
     network: Optional[str]
     security_options: Optional[SecurityOptionsBase]
     timeout_options: Optional[TimeoutOptionsBase]
-    tls_verify: Optional[Union[TLSVerifyMode, str]]
-    tracing_options: Optional[TracingOptionsBase]
     user_agent_extra: Optional[str]
 
 
@@ -79,17 +70,10 @@ ClusterOptionsValidKeys: TypeAlias = Literal[
     'dns_port',
     'dump_configuration',
     'enable_clustermap_notification',
-    'enable_dns_srv',
-    'enable_metrics',
-    'enable_tracing',
     'ip_protocol',
-    'logging_meter_emit_interval',
-    'log_redaction',
     'network',
     'security_options',
     'timeout_options',
-    'tls_verify',
-    'tracing_options',
     'user_agent_extra',
 ]
 
@@ -109,17 +93,10 @@ class ClusterOptionsBase(Dict[str, Any]):
         'dns_port',
         'dump_configuration',
         'enable_clustermap_notification',
-        'enable_dns_srv',
-        'enable_metrics',
-        'enable_tracing',
         'ip_protocol',
-        'logging_meter_emit_interval',
-        'log_redaction',
         'network',
         'security_options',
         'timeout_options',
-        'tls_verify',
-        'tracing_options',
         'user_agent_extra',
     ]
 
@@ -139,17 +116,10 @@ class ClusterOptionsBase(Dict[str, Any]):
                  dns_port: Optional[int] = None,
                  dump_configuration: Optional[bool] = None,
                  enable_clustermap_notification: Optional[bool] = None,
-                 enable_dns_srv: Optional[bool] = None,
-                 enable_metrics: Optional[bool] = None,
-                 enable_tracing: Optional[bool] = None,
                  ip_protocol: Optional[Union[IpProtocol, str]] = None,
-                 logging_meter_emit_interval: Optional[timedelta] = None,
-                 log_redaction: Optional[bool] = None,
                  network: Optional[str] = None,
                  security_options: Optional[SecurityOptionsBase] = None,
                  timeout_options: Optional[TimeoutOptionsBase] = None,
-                 tls_verify: Optional[Union[TLSVerifyMode, str]] = None,
-                 tracing_options: Optional[TracingOptionsBase] = None,
                  user_agent_extra: Optional[str] = None,
                  ) -> None:
         ...
@@ -270,60 +240,6 @@ class TimeoutOptionsBase(Dict[str, object]):
         ...
 
     def __init__(self, **kwargs: Unpack[TimeoutOptionsKwargs]) -> None:
-        filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        super().__init__(**filtered_kwargs)
-
-
-class TracingOptionsKwargs(TypedDict, total=False):
-    tracing_orphaned_queue_flush_interval: Optional[timedelta]
-    tracing_orphaned_queue_size: Optional[int]
-    tracing_threshold_analytics: Optional[timedelta]
-    tracing_threshold_management: Optional[timedelta]
-    tracing_threshold_queue_flush_interval: Optional[timedelta]
-    tracing_threshold_queue_size: Optional[int]
-
-
-TracingOptionsValidKeys: TypeAlias = Literal[
-    'tracing_orphaned_queue_flush_interval',
-    'tracing_orphaned_queue_size',
-    'tracing_threshold_analytics',
-    'tracing_threshold_management',
-    'tracing_threshold_queue_flush_interval',
-    'tracing_threshold_queue_size',
-]
-
-
-class TracingOptionsBase(Dict[str, object]):
-    """
-        **INTERNAL**
-    """
-
-    VALID_OPTION_KEYS: List[TracingOptionsValidKeys] = [
-        'tracing_orphaned_queue_flush_interval',
-        'tracing_orphaned_queue_size',
-        'tracing_threshold_analytics',
-        'tracing_threshold_management',
-        'tracing_threshold_queue_flush_interval',
-        'tracing_threshold_queue_size',
-    ]
-
-    @overload
-    def __init__(self) -> None:
-        ...
-
-    @overload
-    def __init__(self,
-                 *,
-                 tracing_orphaned_queue_flush_interval: Optional[timedelta] = None,
-                 tracing_orphaned_queue_size: Optional[int] = None,
-                 tracing_threshold_analytics: Optional[timedelta] = None,
-                 tracing_threshold_management: Optional[timedelta] = None,
-                 tracing_threshold_queue_flush_interval: Optional[timedelta] = None,
-                 tracing_threshold_queue_size: Optional[int] = None,
-                 ) -> None:
-        ...
-
-    def __init__(self, **kwargs: Unpack[TracingOptionsKwargs]) -> None:
         filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
         super().__init__(**filtered_kwargs)
 

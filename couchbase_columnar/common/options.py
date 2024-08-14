@@ -34,8 +34,6 @@ from couchbase_columnar.common.options_base import SecurityOptionsBase
 from couchbase_columnar.common.options_base import SecurityOptionsKwargs as SecurityOptionsKwargs  # noqa: F401
 from couchbase_columnar.common.options_base import TimeoutOptionsBase
 from couchbase_columnar.common.options_base import TimeoutOptionsKwargs as TimeoutOptionsKwargs  # noqa: F401
-from couchbase_columnar.common.options_base import TracingOptionsBase
-from couchbase_columnar.common.options_base import TracingOptionsKwargs as TracingOptionsKwargs  # noqa: F401
 
 """
     Python SDK Cluster Options Classes
@@ -63,17 +61,10 @@ class ClusterOptions(ClusterOptionsBase):
         dns_port (int, optional): **VOLATILE** This API is subject to change at any time. Set to configure custom DNS port. Defaults to `None`.
         dump_configuration (bool, optional): If enabled, dump received server configuration when TRACE level logging. Defaults to `False` (disabled).
         enable_clustermap_notification (bool, optional): If enabled, allows server to push configuration updates asynchronously. Defaults to `True` (enabled).
-        enable_dns_srv (bool, optional): If enabled, SDK will attempt to bootstrap using DNS SRV. Defaults to `True` (enabled).
-        enable_metrics (bool, optional): If enabled, use C++ core logging meter.  Otherwise use no-op meter. Defaults to `True` (enabled).
-        enable_tracing (bool, optional): If enabled, use C++ core threshold-logging meter.  Otherwise use no-op meter. Defaults to `True` (enabled).
         ip_protocol (Union[IpProtocol, str], optional): Controls preference of IP protocol for name resolution. Defaults to `None` (any).
-        logging_meter_emit_interval (timedelta, optional): Set to configure, logging meter emit interval.  Defaults to 10 minutes.
-        log_redaction (bool, optional): **NOTE:** Currently a no-op. If enabled, allows log redaction. Defaults to `False` (disabled).
         network (str, optional): Set to configure external network. Defaults to `None` (auto).
         security_options (SecurityOptions, optional): Security options for SDK connection.
         timeout_options (TimeoutOptions, optional): Timeout options for various SDK operations. See :class:`~couchbase_columnar.options.ClusterTimeoutOptions` for details.
-        tls_verify (Union[TLSVerifyMode, str], optional): Set to configure TLS verify mode. Defaults to `None` (peer).
-        tracing_options (TracingOptions, optional): Tracing options for SDK tracing bevavior. Ignored if `tracer` option is set. See :class:`~couchbase_columnar.options.ClusterTracingOptions` for details.
         user_agent_extra (str, optional): Set to add further details to identification fields in server protocols. Defaults to `None` (`{Python SDK version} (python/{Python version})`).
     """  # noqa: E501
 
@@ -209,22 +200,6 @@ class TimeoutOptions(TimeoutOptionsBase):
     """  # noqa: E501
 
 
-class TracingOptions(TracingOptionsBase):
-    """Available tracing options to set when creating a cluster.
-
-    These options set the default interval/size/threshold for tracing and orphaned operations.
-    All options are optional and default to `None`. Values in parenthesis indicate C++ core default that will be used if the option is not set.
-
-    Args:
-        tracing_orphaned_queue_flush_interval (timedelta, optional): Set to configure the interveral to flush the orphaned operations queue. Defaults to `None` (10s).
-        tracing_orphaned_queue_size (int, optional): Set to configure size of the orphaned operations queue. Defaults to `None` (64).
-        tracing_threshold_analytics (timedelta, optional): Set to configure analytics operations threshold. Defaults to `None` (1s).
-        tracing_threshold_management (timedelta, optional): Set to configure management operations threshold. Defaults to `None` (1s).
-        tracing_threshold_queue_flush_interval (timedelta, optional): Set to configure the interveral to flush tracing operations queue. Defaults to `None` (10s).
-        tracing_threshold_queue_size (int, optional): Set to configure the size of tracing operations queue. Defaults to `None` (64).
-    """  # noqa: E501
-
-
 class QueryOptions(QueryOptionsBase):
     """Available options for columnar query operation.
 
@@ -250,6 +225,5 @@ OptionsClass: TypeAlias = Union[
     ClusterOptions,
     SecurityOptions,
     TimeoutOptions,
-    TracingOptions,
     QueryOptions,
 ]

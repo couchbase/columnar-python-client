@@ -53,9 +53,18 @@ class ConnectRequest:
     connection_str: str
     credential: Dict[str, str]
     options: Optional[ClusterOptionsTransformedKwargs] = None
+    enable_dns_srv: Optional[bool] = None
 
     def to_req_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        req_dict = asdict(self)
+        if self.enable_dns_srv is False:
+            if 'options' not in req_dict:
+                req_dict['options'] = {}
+            req_dict['options']['enable_dns_srv'] = req_dict.pop('enable_dns_srv')
+        else:
+            req_dict.pop('enable_dns_srv')
+
+        return req_dict
 
 
 @dataclass
@@ -105,7 +114,8 @@ class ClusterRequestBuilder:
     def build_connection_request(self) -> ConnectRequest:
         return ConnectRequest(self._conn_details.connection_str,
                               self._conn_details.credential,
-                              self._conn_details.cluster_options)
+                              self._conn_details.cluster_options,
+                              self._conn_details.enable_dns_srv)
 
     def build_close_connection_request(self) -> CloseConnectionRequest:
         return CloseConnectionRequest()

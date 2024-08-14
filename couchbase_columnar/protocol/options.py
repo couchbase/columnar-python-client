@@ -44,20 +44,16 @@ from couchbase_columnar.common.core.utils import (VALIDATE_BOOL,
                                                   validate_path,
                                                   validate_raw_dict)
 from couchbase_columnar.common.deserializer import Deserializer
-from couchbase_columnar.common.enums import (IpProtocol,
-                                             QueryScanConsistency,
-                                             TLSVerifyMode)
+from couchbase_columnar.common.enums import IpProtocol, QueryScanConsistency
 from couchbase_columnar.common.exceptions import InvalidArgumentException
 from couchbase_columnar.common.options import (ClusterOptions,
                                                OptionsClass,
                                                QueryOptions,
                                                SecurityOptions,
-                                               TimeoutOptions,
-                                               TracingOptions)
+                                               TimeoutOptions)
 from couchbase_columnar.common.options_base import (ClusterOptionsValidKeys,
                                                     SecurityOptionsValidKeys,
-                                                    TimeoutOptionsValidKeys,
-                                                    TracingOptionsValidKeys)
+                                                    TimeoutOptionsValidKeys)
 
 QUERY_CONSISTENCY_TO_STR = EnumToStr[QueryScanConsistency]()
 
@@ -74,17 +70,10 @@ class ClusterOptionsTransforms(TypedDict):
     dns_port: Dict[Literal['dns_port'], Callable[[Any], int]]
     dump_configuration: Dict[Literal['dump_configuration'], Callable[[Any], bool]]
     enable_clustermap_notification: Dict[Literal['enable_clustermap_notification'], Callable[[Any], bool]]
-    enable_dns_srv: Dict[Literal['enable_dns_srv'], Callable[[Any], bool]]
-    enable_metrics: Dict[Literal['enable_metrics'], Callable[[Any], bool]]
-    enable_tracing: Dict[Literal['enable_tracing'], Callable[[Any], bool]]
     ip_protocol: Dict[Literal['use_ip_protocol'], Callable[[Any], str]]
-    log_redaction: Dict[Literal['log_redaction'], Callable[[Any], bool]]
-    logging_meter_emit_interval: Dict[Literal['emit_interval'], Callable[[Any], int]]
     network: Dict[Literal['network'], Callable[[Any], str]]
     security_options: Dict[Literal['security_options'], Callable[[Any], Any]]
     timeout_options: Dict[Literal['timeout_options'], Callable[[Any], Any]]
-    tls_verify: Dict[Literal['tls_verify'], Callable[[Any], str]]
-    tracing_options: Dict[Literal['tracing_options'], Callable[[Any], Any]]
     user_agent_extra: Dict[Literal['user_agent_extra'], Callable[[Any], str]]
 
 
@@ -98,17 +87,10 @@ CLUSTER_OPTIONS_TRANSFORMS: ClusterOptionsTransforms = {
     'dns_port': {'dns_port': VALIDATE_INT},
     'dump_configuration': {'dump_configuration': VALIDATE_BOOL},
     'enable_clustermap_notification': {'enable_clustermap_notification': VALIDATE_BOOL},
-    'enable_dns_srv': {'enable_dns_srv': VALIDATE_BOOL},
-    'enable_metrics': {'enable_metrics': VALIDATE_BOOL},
-    'enable_tracing': {'enable_tracing': VALIDATE_BOOL},
     'ip_protocol': {'use_ip_protocol': EnumToStr[IpProtocol]()},
-    'log_redaction': {'log_redaction': VALIDATE_BOOL},
-    'logging_meter_emit_interval': {'emit_interval': timedelta_as_microseconds},
     'network': {'network': VALIDATE_STR},
     'security_options': {'security_options': lambda x: x},
     'timeout_options': {'timeout_options': lambda x: x},
-    'tls_verify': {'tls_verify': EnumToStr[TLSVerifyMode]()},
-    'tracing_options': {'tracing_options': lambda x: x},
     'user_agent_extra': {'user_agent_extra': VALIDATE_STR},
 }
 
@@ -122,17 +104,10 @@ class ClusterOptionsTransformedKwargs(TypedDict, total=False):
     dns_nameserver: Optional[str]
     dns_port: Optional[int]
     dump_configuration: Optional[bool]
-    emit_interval: Optional[int]
     enable_clustermap_notification: Optional[bool]
-    enable_dns_srv: Optional[bool]
-    enable_metrics: Optional[bool]
-    enable_tracing: Optional[bool]
-    log_redaction: Optional[bool]
     network: Optional[str]
     security_options: Optional[SecurityOptionsTransformedKwargs]
     timeout_options: Optional[TimeoutOptionsTransformedKwargs]
-    tls_verify: Optional[str]
-    tracing_options: Optional[TracingOptionsTransformedKwargs]
     user_agent_extra: Optional[str]
     use_ip_protocol: Optional[str]
 
@@ -199,34 +174,6 @@ class TimeoutOptionsTransformedKwargs(TypedDict, total=False):
     socket_connect_timeout: Optional[int]
 
 
-class TracingOptionsTransforms(TypedDict):
-    tracing_orphaned_queue_flush_interval: Dict[Literal['orphaned_emit_interval'], Callable[[Any], int]]
-    tracing_orphaned_queue_size: Dict[Literal['orphaned_sample_size'], Callable[[Any], int]]
-    tracing_threshold_analytics: Dict[Literal['analytics_threshold'], Callable[[Any], int]]
-    tracing_threshold_management: Dict[Literal['management_threshold'], Callable[[Any], int]]
-    tracing_threshold_queue_flush_interval: Dict[Literal['threshold_emit_interval'], Callable[[Any], int]]
-    tracing_threshold_queue_size: Dict[Literal['threshold_sample_size'], Callable[[Any], int]]
-
-
-TRACING_OPTIONS_TRANSFORMS: TracingOptionsTransforms = {
-    'tracing_orphaned_queue_flush_interval': {'orphaned_emit_interval': timedelta_as_microseconds},
-    'tracing_orphaned_queue_size': {'orphaned_sample_size': VALIDATE_INT},
-    'tracing_threshold_analytics': {'analytics_threshold': timedelta_as_microseconds},
-    'tracing_threshold_management': {'management_threshold': timedelta_as_microseconds},
-    'tracing_threshold_queue_flush_interval': {'threshold_emit_interval': timedelta_as_microseconds},
-    'tracing_threshold_queue_size': {'threshold_sample_size': VALIDATE_INT},
-}
-
-
-class TracingOptionsTransformedKwargs(TypedDict, total=False):
-    orphaned_emit_interval: Optional[int]
-    orphaned_sample_size: Optional[int]
-    analytics_threshold: Optional[int]
-    management_threshold: Optional[int]
-    threshold_emit_interval: Optional[int]
-    threshold_sample_size: Optional[int]
-
-
 QueryOptionsValidKeys: TypeAlias = Literal[
     'deserializer',
     'lazy_execute',
@@ -285,20 +232,17 @@ TransformedOptionKwargs = TypeVar('TransformedOptionKwargs',
                                   QueryOptionsTransformedKwargs,
                                   ClusterOptionsTransformedKwargs,
                                   SecurityOptionsTransformedKwargs,
-                                  TimeoutOptionsTransformedKwargs,
-                                  TracingOptionsTransformedKwargs)
+                                  TimeoutOptionsTransformedKwargs)
 
 TransformedClusterOptionKwargs = TypeVar('TransformedClusterOptionKwargs',
                                          ClusterOptionsTransformedKwargs,
                                          SecurityOptionsTransformedKwargs,
-                                         TimeoutOptionsTransformedKwargs,
-                                         TracingOptionsTransformedKwargs)
+                                         TimeoutOptionsTransformedKwargs)
 
 TransformDetailsPair = Union[Tuple[List[QueryOptionsValidKeys], QueryOptionsTransforms],
                              Tuple[List[ClusterOptionsValidKeys], ClusterOptionsTransforms],
                              Tuple[List[SecurityOptionsValidKeys], SecurityOptionsTransforms],
                              Tuple[List[TimeoutOptionsValidKeys], TimeoutOptionsTransforms],
-                             Tuple[List[TracingOptionsValidKeys], TracingOptionsTransforms],
                              ]
 
 
@@ -331,8 +275,6 @@ class OptionsBuilder:
             return SecurityOptions.VALID_OPTION_KEYS, SECURITY_OPTIONS_TRANSFORMS
         elif option_type == 'TimeoutOptions':
             return TimeoutOptions.VALID_OPTION_KEYS, TIMEOUT_OPTIONS_TRANSFORMS
-        elif option_type == 'TracingOptions':
-            return TracingOptions.VALID_OPTION_KEYS, TRACING_OPTIONS_TRANSFORMS
         elif option_type == 'QueryOptions':
             return QueryOptions.VALID_OPTION_KEYS, QUERY_OPTIONS_TRANSFORMS
         else:
@@ -364,15 +306,8 @@ class OptionsBuilder:
                 if k not in temp_options:
                     temp_options[k] = v
 
-        tracing_opts = temp_options.pop('tracing_options', {})
-        if tracing_opts and isinstance(tracing_opts, dict):
-            for k, v in tracing_opts.items():
-                if k not in temp_options:
-                    temp_options[k] = v
-
         keys_to_ignore: List[str] = [*ClusterOptions.VALID_OPTION_KEYS,
-                                     *TimeoutOptions.VALID_OPTION_KEYS,
-                                     *TracingOptions.VALID_OPTION_KEYS]
+                                     *TimeoutOptions.VALID_OPTION_KEYS]
 
         # not going to be able to make mypy happy w/ keys_to_ignore :/
         transformed_security_opts = self.build_options(SecurityOptions,
@@ -383,8 +318,7 @@ class OptionsBuilder:
             temp_options['security_options'] = transformed_security_opts
 
         keys_to_ignore = [*ClusterOptions.VALID_OPTION_KEYS,
-                          *SecurityOptions.VALID_OPTION_KEYS,
-                          *TracingOptions.VALID_OPTION_KEYS]
+                          *SecurityOptions.VALID_OPTION_KEYS]
 
         # not going to be able to make mypy happy w/ keys_to_ignore :/
         transformed_timeout_opts = self.build_options(TimeoutOptions,
@@ -393,19 +327,6 @@ class OptionsBuilder:
                                                       keys_to_ignore=keys_to_ignore)
         if transformed_timeout_opts:
             temp_options['timeout_options'] = transformed_timeout_opts
-
-        keys_to_ignore = [*ClusterOptions.VALID_OPTION_KEYS,
-                          *SecurityOptions.VALID_OPTION_KEYS,
-                          *TimeoutOptions.VALID_OPTION_KEYS]
-
-        # not going to be able to make mypy happy w/ keys_to_ignore :/
-        transformed_tracing_opts = self.build_options(TracingOptions,
-                                                      TracingOptionsTransformedKwargs,
-                                                      temp_options,
-                                                      keys_to_ignore=keys_to_ignore)
-
-        if transformed_tracing_opts:
-            temp_options['tracing_options'] = transformed_tracing_opts
 
         # transform final ClusterOptions
         transformed_opts = self.build_options(option_type, output_type, temp_options)
