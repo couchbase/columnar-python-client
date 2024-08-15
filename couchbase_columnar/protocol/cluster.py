@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor
-from threading import Event
 from typing import (TYPE_CHECKING,
                     Optional,
                     Union)
@@ -100,14 +99,11 @@ class Cluster:
                       statement: str,
                       *args: object,
                       **kwargs: object) -> Union[BlockingQueryResult, Future[BlockingQueryResult]]:
-        cancel_token: Optional[Event] = kwargs.pop('cancel_token', None)
-        cancel_poll_interval: float = kwargs.pop('cancel_poll_interval', 0.25)
-        req = self._request_builder.build_query_request(statement, *args, **kwargs)
+        req, cancel_token = self._request_builder.build_query_request(statement, *args, **kwargs)
         lazy_execute = req.options.pop('lazy_execute', None)
         executor = _QueryStreamingExecutor(self.client_adapter.client,
                                            req,
                                            cancel_token=cancel_token,
-                                           cancel_poll_interval=cancel_poll_interval,
                                            lazy_execute=lazy_execute)
         if executor.cancel_token is not None:
             # TODO:  warning or exception?  lazy is only available for the non-cancellable path

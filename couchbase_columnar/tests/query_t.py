@@ -25,7 +25,7 @@ import pytest
 from couchbase_columnar.common.streaming import StreamingState
 from couchbase_columnar.exceptions import QueryException
 from couchbase_columnar.options import QueryOptions
-from couchbase_columnar.query import QueryScanConsistency
+from couchbase_columnar.query import CancelToken, QueryScanConsistency
 from couchbase_columnar.result import BlockingQueryResult
 from tests import YieldFixture
 
@@ -35,11 +35,14 @@ if TYPE_CHECKING:
 
 class QueryTestSuite:
     TEST_MANIFEST = [
-        'test_query_cancel_prior_iterating',
-        'test_query_cancel_prior_iterating_with_options',
-        'test_query_cancel_prior_iterating_with_kwargs',
-        'test_query_cancel_prior_iterating_with_opts_and_kwargs',
-        'test_query_cancel_while_iterating',
+        'test_cancel_positional_params_override',
+        'test_cancel_positional_params_override_token_in_kwargs',
+        'test_cancel_prior_iterating',
+        'test_cancel_prior_iterating_positional_params',
+        'test_cancel_prior_iterating_with_kwargs',
+        'test_cancel_prior_iterating_with_options',
+        'test_cancel_prior_iterating_with_opts_and_kwargs',
+        'test_cancel_while_iterating',
         'test_query_metadata',
         'test_query_metadata_not_available',
         'test_query_named_parameters',
@@ -86,13 +89,18 @@ class QueryTestSuite:
             return f'SELECT * FROM {test_env.fqdn} LIMIT 5;'
 
     @pytest.mark.parametrize('cancel_via_token', [False, True])
-    def test_query_cancel_prior_iterating(self, test_env: BlockingTestEnvironment, cancel_via_token: bool) -> None:
-        statement = 'FROM range(0, 100000) AS r SELECT *'
-        cancel_token = Event()
-        ft = test_env.cluster_or_scope.execute_query(statement, cancel_token=cancel_token)
+    def test_cancel_positional_params_override(self,
+                                               test_env: BlockingTestEnvironment,
+                                               query_statement_pos_params_limit2: str,
+                                               cancel_via_token: bool) -> None:
+        cancel_token = CancelToken(Event())
+        ft = test_env.cluster_or_scope.execute_query(query_statement_pos_params_limit2,
+                                                     QueryOptions(positional_parameters=['abcdefg']),
+                                                     cancel_token,
+                                                     'United States')
         assert isinstance(ft, Future)
         if cancel_via_token:
-            cancel_token.set()
+            cancel_token.cancel()
             res = ft.result()
         else:
             res = ft.result()
@@ -101,17 +109,18 @@ class QueryTestSuite:
         assert res._executor.streaming_state == StreamingState.Cancelled
 
     @pytest.mark.parametrize('cancel_via_token', [False, True])
-    def test_query_cancel_prior_iterating_with_options(self,
-                                                       test_env: BlockingTestEnvironment,
-                                                       cancel_via_token: bool) -> None:
-        statement = 'FROM range(0, 100000) AS r SELECT *'
-        cancel_token = Event()
-        ft = test_env.cluster_or_scope.execute_query(statement,
-                                                     QueryOptions(timeout=timedelta(seconds=10)),
+    def test_cancel_positional_params_override_token_in_kwargs(self,
+                                                               test_env: BlockingTestEnvironment,
+                                                               query_statement_pos_params_limit2: str,
+                                                               cancel_via_token: bool) -> None:
+        cancel_token = CancelToken(Event())
+        ft = test_env.cluster_or_scope.execute_query(query_statement_pos_params_limit2,
+                                                     QueryOptions(positional_parameters=['abcdefg']),
+                                                     'United States',
                                                      cancel_token=cancel_token)
         assert isinstance(ft, Future)
         if cancel_via_token:
-            cancel_token.set()
+            cancel_token.cancel()
             res = ft.result()
         else:
             res = ft.result()
@@ -120,17 +129,51 @@ class QueryTestSuite:
         assert res._executor.streaming_state == StreamingState.Cancelled
 
     @pytest.mark.parametrize('cancel_via_token', [False, True])
-    def test_query_cancel_prior_iterating_with_kwargs(self,
-                                                      test_env: BlockingTestEnvironment,
-                                                      cancel_via_token: bool) -> None:
+    def test_cancel_prior_iterating(self, test_env: BlockingTestEnvironment, cancel_via_token: bool) -> None:
         statement = 'FROM range(0, 100000) AS r SELECT *'
-        cancel_token = Event()
+        cancel_token = CancelToken(Event())
+        ft = test_env.cluster_or_scope.execute_query(statement, cancel_token=cancel_token)
+        assert isinstance(ft, Future)
+        if cancel_via_token:
+            cancel_token.cancel()
+            res = ft.result()
+        else:
+            res = ft.result()
+            res.cancel()
+        assert isinstance(res, BlockingQueryResult)
+        assert res._executor.streaming_state == StreamingState.Cancelled
+
+    @pytest.mark.parametrize('cancel_via_token', [False, True])
+    def test_cancel_prior_iterating_positional_params(self,
+                                                      test_env: BlockingTestEnvironment,
+                                                      query_statement_pos_params_limit2: str,
+                                                      cancel_via_token: bool) -> None:
+        cancel_token = CancelToken(Event())
+        ft = test_env.cluster_or_scope.execute_query(query_statement_pos_params_limit2,
+                                                     cancel_token,
+                                                     'United States')
+        assert isinstance(ft, Future)
+        if cancel_via_token:
+            cancel_token.cancel()
+            res = ft.result()
+        else:
+            res = ft.result()
+            res.cancel()
+        assert isinstance(res, BlockingQueryResult)
+        assert res._executor.streaming_state == StreamingState.Cancelled
+
+    @pytest.mark.parametrize('cancel_via_token', [False, True])
+    def test_cancel_prior_iterating_with_kwargs(self,
+                                                test_env: BlockingTestEnvironment,
+                                                cancel_via_token: bool) -> None:
+        statement = 'FROM range(0, 100000) AS r SELECT *'
+        cancel_token = CancelToken(Event())
         ft = test_env.cluster_or_scope.execute_query(statement,
                                                      timeout=timedelta(seconds=10),
                                                      cancel_token=cancel_token)
         assert isinstance(ft, Future)
         if cancel_via_token:
-            cancel_token.set()
+            cancel_token.cancel()
             res = ft.result()
         else:
             res = ft.result()
@@ -139,18 +182,37 @@ class QueryTestSuite:
         assert res._executor.streaming_state == StreamingState.Cancelled
 
     @pytest.mark.parametrize('cancel_via_token', [False, True])
-    def test_query_cancel_prior_iterating_with_opts_and_kwargs(self,
-                                                               test_env: BlockingTestEnvironment,
-                                                               cancel_via_token: bool) -> None:
+    def test_cancel_prior_iterating_with_options(self,
+                                                 test_env: BlockingTestEnvironment,
+                                                 cancel_via_token: bool) -> None:
         statement = 'FROM range(0, 100000) AS r SELECT *'
-        cancel_token = Event()
+        cancel_token = CancelToken(Event())
+        ft = test_env.cluster_or_scope.execute_query(statement,
+                                                     QueryOptions(timeout=timedelta(seconds=10)),
+                                                     cancel_token)
+        assert isinstance(ft, Future)
+        if cancel_via_token:
+            cancel_token.cancel()
+            res = ft.result()
+        else:
+            res = ft.result()
+            res.cancel()
+        assert isinstance(res, BlockingQueryResult)
+        assert res._executor.streaming_state == StreamingState.Cancelled
+
+    @pytest.mark.parametrize('cancel_via_token', [False, True])
+    def test_cancel_prior_iterating_with_opts_and_kwargs(self,
+                                                         test_env: BlockingTestEnvironment,
+                                                         cancel_via_token: bool) -> None:
+        statement = 'FROM range(0, 100000) AS r SELECT *'
+        cancel_token = CancelToken(Event())
         ft = test_env.cluster_or_scope.execute_query(statement,
                                                      QueryOptions(scan_consistency=QueryScanConsistency.NOT_BOUNDED),
                                                      timeout=timedelta(seconds=10),
                                                      cancel_token=cancel_token)
         assert isinstance(ft, Future)
         if cancel_via_token:
-            cancel_token.set()
+            cancel_token.cancel()
             res = ft.result()
         else:
             res = ft.result()
@@ -159,11 +221,11 @@ class QueryTestSuite:
         assert res._executor.streaming_state == StreamingState.Cancelled
 
     @pytest.mark.parametrize('cancel_via_token', [False, True])
-    def test_query_cancel_while_iterating(self,
-                                          test_env: BlockingTestEnvironment,
-                                          query_statement_limit5: str,
-                                          cancel_via_token: bool) -> None:
-        cancel_token = Event()
+    def test_cancel_while_iterating(self,
+                                    test_env: BlockingTestEnvironment,
+                                    query_statement_limit5: str,
+                                    cancel_via_token: bool) -> None:
+        cancel_token = CancelToken(Event())
         ft = test_env.cluster_or_scope.execute_query(query_statement_limit5,
                                                      cancel_token=cancel_token)
         assert isinstance(ft, Future)
@@ -176,7 +238,7 @@ class QueryTestSuite:
         for row in res.rows():
             if count == 2:
                 if cancel_via_token:
-                    cancel_token.set()
+                    cancel_token.cancel()
                 else:
                     res.cancel()
             assert row is not None
@@ -187,10 +249,12 @@ class QueryTestSuite:
         expected_state = StreamingState.Cancelled
         assert res._executor.streaming_state == expected_state
 
-    def test_query_metadata(self, test_env: BlockingTestEnvironment) -> None:
-        statement = f'SELECT * FROM {test_env.fqdn} LIMIT 2;'
-        result = test_env.cluster.execute_query(statement)
-        test_env.assert_rows(result, 2)
+    def test_query_metadata(self,
+                            test_env: BlockingTestEnvironment,
+                            query_statement_limit5: str) -> None:
+        result = test_env.cluster_or_scope.execute_query(query_statement_limit5)
+        expected_count = 5
+        test_env.assert_rows(result, expected_count)
 
         metadata = result.metadata()
 
@@ -200,14 +264,15 @@ class QueryTestSuite:
         metrics = metadata.metrics()
 
         assert metrics.result_size() > 0
-        assert metrics.result_count() == 2
+        assert metrics.result_count() == expected_count
         assert metrics.processed_objects() > 0
         assert metrics.elapsed_time() > timedelta(0)
         assert metrics.execution_time() > timedelta(0)
 
-    def test_query_metadata_not_available(self, test_env: BlockingTestEnvironment) -> None:
-        statement = f'SELECT * FROM {test_env.fqdn} LIMIT 5;'
-        result = test_env.cluster.execute_query(statement)
+    def test_query_metadata_not_available(self,
+                                          test_env: BlockingTestEnvironment,
+                                          query_statement_limit5: str) -> None:
+        result = test_env.cluster_or_scope.execute_query(query_statement_limit5)
 
         with pytest.raises(RuntimeError):
             result.metadata()
@@ -302,7 +367,7 @@ class QueryTestSuite:
     def test_query_with_unused_cancel_token(self,
                                             test_env: BlockingTestEnvironment,
                                             query_statement_limit2: str) -> None:
-        cancel_token = Event()
+        cancel_token = CancelToken(Event())
         ft = test_env.cluster_or_scope.execute_query(query_statement_limit2,
                                                      cancel_token=cancel_token)
         assert isinstance(ft, Future)
@@ -314,7 +379,7 @@ class QueryTestSuite:
 
     def test_query_with_unused_cancel_token_raises_exception(self, test_env: BlockingTestEnvironment) -> None:
         statement = "I'm not N1QL!"
-        cancel_token = Event()
+        cancel_token = CancelToken(Event())
         ft = test_env.cluster_or_scope.execute_query(statement, cancel_token=cancel_token)
         assert isinstance(ft, Future)
         with pytest.raises(QueryException):

@@ -14,13 +14,14 @@
 #  limitations under the License.
 
 from concurrent.futures import Future
-from threading import Event
-from typing import Optional, overload
+from typing import overload
 
 from typing_extensions import Unpack
 
+from couchbase_columnar import JSONType
 from couchbase_columnar.options import QueryOptions, QueryOptionsKwargs
 from couchbase_columnar.protocol.database import Database as Database
+from couchbase_columnar.query import CancelToken
 from couchbase_columnar.result import BlockingQueryResult
 
 class Scope:
@@ -53,72 +54,95 @@ class Scope:
     def execute_query(self,
                       statement: str,
                       options: QueryOptions,
-                      *args: str,
+                      *args: JSONType,
                       **kwargs: Unpack[QueryOptionsKwargs]) -> BlockingQueryResult: ...
 
     @overload
     def execute_query(self,
                       statement: str,
                       options: QueryOptions,
-                      *args: str,
+                      *args: JSONType,
                       **kwargs: str) -> BlockingQueryResult: ...
 
     @overload
     def execute_query(self,
                       statement: str,
-                      *args: str,
+                      *args: JSONType,
                       **kwargs: str) -> BlockingQueryResult: ...
 
     @overload
     def execute_query(self,
                       statement: str,
-                      cancel_token: Event,
-                      cancel_poll_interval: Optional[float]=None) -> Future[BlockingQueryResult]: ...
+                      cancel_token: CancelToken) -> Future[BlockingQueryResult]: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      cancel_token: CancelToken,
+                      *args: JSONType) -> Future[BlockingQueryResult]: ...
 
     @overload
     def execute_query(self,
                       statement: str,
                       options: QueryOptions,
-                      cancel_token: Event,
-                      cancel_poll_interval: Optional[float]=None) -> Future[BlockingQueryResult]: ...
+                      cancel_token: CancelToken) -> Future[BlockingQueryResult]: ...
 
     @overload
     def execute_query(self,
                       statement: str,
-                      cancel_token: Event,
-                      cancel_poll_interval: Optional[float]=None,
+                      cancel_token: CancelToken,
                       **kwargs: Unpack[QueryOptionsKwargs]) -> Future[BlockingQueryResult]: ...
 
     @overload
     def execute_query(self,
                       statement: str,
                       options: QueryOptions,
-                      cancel_token: Event,
-                      cancel_poll_interval: Optional[float]=None,
+                      cancel_token: CancelToken,
                       **kwargs: Unpack[QueryOptionsKwargs]) -> Future[BlockingQueryResult]: ...
 
     @overload
     def execute_query(self,
                       statement: str,
                       options: QueryOptions,
-                      *args: str,
-                      cancel_token: Event,
-                      cancel_poll_interval: Optional[float]=None,
+                      cancel_token: CancelToken,
+                      *args: JSONType,
                       **kwargs: Unpack[QueryOptionsKwargs]) -> Future[BlockingQueryResult]: ...
 
     @overload
     def execute_query(self,
                       statement: str,
                       options: QueryOptions,
-                      *args: str,
-                      cancel_token: Event,
-                      cancel_poll_interval: Optional[float]=None,
+                      *args: JSONType,
+                      cancel_token: CancelToken,
+                      **kwargs: Unpack[QueryOptionsKwargs]) -> Future[BlockingQueryResult]: ...
+
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      options: QueryOptions,
+                      cancel_token: CancelToken,
+                      *args: JSONType,
                       **kwargs: str) -> Future[BlockingQueryResult]: ...
 
     @overload
     def execute_query(self,
                       statement: str,
-                      *args: str,
-                      cancel_token: Event,
-                      cancel_poll_interval: Optional[float]=None,
+                      options: QueryOptions,
+                      *args: JSONType,
+                      cancel_token: CancelToken,
+                      **kwargs: str) -> Future[BlockingQueryResult]: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      cancel_token: CancelToken,
+                      *args: JSONType,
+                      **kwargs: str) -> Future[BlockingQueryResult]: ...
+
+    @overload
+    def execute_query(self,
+                      statement: str,
+                      *args: JSONType,
+                      cancel_token: CancelToken,
                       **kwargs: str) -> Future[BlockingQueryResult]: ...

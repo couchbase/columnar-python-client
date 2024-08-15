@@ -68,8 +68,9 @@ class QueryOptionsTestSuite:
         from couchbase_columnar.deserializer import DefaultJsonDeserializer
         deserializer = DefaultJsonDeserializer()
         q_opts = QueryOptions(deserializer=deserializer)
-        req = request_builder.build_query_request(query_statment, q_opts)
+        req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
         exp_opts: Dict[str, object] = {}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.deserializer == deserializer
         assert req.database_name == query_ctx.database_name
@@ -82,8 +83,9 @@ class QueryOptionsTestSuite:
         from couchbase_columnar.deserializer import DefaultJsonDeserializer
         deserializer = DefaultJsonDeserializer()
         kwargs = {'deserializer': deserializer}
-        req = request_builder.build_query_request(query_statment, **kwargs)
+        req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
         exp_opts: Dict[str, object] = {}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.deserializer == deserializer
         assert req.database_name == query_ctx.database_name
@@ -95,8 +97,9 @@ class QueryOptionsTestSuite:
                                       query_ctx: QueryContext) -> None:
         params: Dict[str, JSONType] = {'foo': 'bar', 'baz': 1, 'quz': False}
         q_opts = QueryOptions(named_parameters=params)
-        req = request_builder.build_query_request(query_statment, q_opts)
+        req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
         exp_opts = {'named_parameters': params}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -107,8 +110,9 @@ class QueryOptionsTestSuite:
                                              query_ctx: QueryContext) -> None:
         params = {'foo': 'bar', 'baz': 1, 'quz': False}
         kwargs = {'named_parameters': params}
-        req = request_builder.build_query_request(query_statment, **kwargs)
+        req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
         exp_opts = {'named_parameters': params}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -119,8 +123,9 @@ class QueryOptionsTestSuite:
                                            query_ctx: QueryContext) -> None:
         params: List[JSONType] = ['foo', 'bar', 1, False]
         q_opts = QueryOptions(positional_parameters=params)
-        req = request_builder.build_query_request(query_statment, q_opts)
+        req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
         exp_opts = {'positional_parameters': params}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -131,8 +136,9 @@ class QueryOptionsTestSuite:
                                                   query_ctx: QueryContext) -> None:
         params = ['foo', 'bar', 1, False]
         kwargs = {'positional_parameters': params}
-        req = request_builder.build_query_request(query_statment, **kwargs)
+        req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
         exp_opts = {'positional_parameters': params}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -142,8 +148,9 @@ class QueryOptionsTestSuite:
                               request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                               query_ctx: QueryContext) -> None:
         q_opts = QueryOptions(priority=True)
-        req = request_builder.build_query_request(query_statment, q_opts)
+        req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
         exp_opts = {'priority': True}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -153,8 +160,9 @@ class QueryOptionsTestSuite:
                                      request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                                      query_ctx: QueryContext) -> None:
         kwargs = {'priority': True}
-        req = request_builder.build_query_request(query_statment, **kwargs)
+        req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
         exp_opts = {'priority': True}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -166,8 +174,9 @@ class QueryOptionsTestSuite:
         pos_params = ['foo', 'bar', 1, False]
         params = {'readonly': True, 'positional_params': pos_params}
         q_opts = QueryOptions(raw=params)
-        req = request_builder.build_query_request(query_statment, q_opts)
+        req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
         exp_opts = {'raw': params}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -178,7 +187,8 @@ class QueryOptionsTestSuite:
                                 query_ctx: QueryContext) -> None:
         pos_params = ['foo', 'bar', 1, False]
         kwargs = {'raw': {'readonly': True, 'positional_params': pos_params}}
-        req = request_builder.build_query_request(query_statment, **kwargs)
+        req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
+        assert cancel_token is None
         assert req.options == kwargs
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -188,8 +198,9 @@ class QueryOptionsTestSuite:
                               request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                               query_ctx: QueryContext) -> None:
         q_opts = QueryOptions(read_only=True)
-        req = request_builder.build_query_request(query_statment, q_opts)
+        req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
         exp_opts = {'readonly': True}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -199,8 +210,9 @@ class QueryOptionsTestSuite:
                                      request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                                      query_ctx: QueryContext) -> None:
         kwargs = {'read_only': True}
-        req = request_builder.build_query_request(query_statment, **kwargs)
+        req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
         exp_opts = {'readonly': True}
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -211,10 +223,11 @@ class QueryOptionsTestSuite:
                                       query_ctx: QueryContext) -> None:
         from couchbase_columnar.query import QueryScanConsistency
         q_opts = QueryOptions(scan_consistency=QueryScanConsistency.REQUEST_PLUS)
-        req = request_builder.build_query_request(query_statment, q_opts)
+        req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
         exp_opts = {
             'scan_consistency': QueryScanConsistency.REQUEST_PLUS.value
         }
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.scope_name == query_ctx.scope_name
         assert req.database_name == query_ctx.database_name
@@ -226,10 +239,11 @@ class QueryOptionsTestSuite:
                                              query_ctx: QueryContext) -> None:
         from couchbase_columnar.query import QueryScanConsistency
         kwargs = {'scan_consistency': QueryScanConsistency.REQUEST_PLUS}
-        req = request_builder.build_query_request(query_statment, **kwargs)
+        req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
         exp_opts = {
             'scan_consistency': QueryScanConsistency.REQUEST_PLUS.value
         }
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.scope_name == query_ctx.scope_name
         assert req.database_name == query_ctx.database_name
@@ -240,10 +254,11 @@ class QueryOptionsTestSuite:
                              request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                              query_ctx: QueryContext) -> None:
         q_opts = QueryOptions(timeout=timedelta(seconds=20))
-        req = request_builder.build_query_request(query_statment, q_opts)
+        req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
         exp_opts = {
             'timeout': 20000000
         }
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
@@ -253,10 +268,11 @@ class QueryOptionsTestSuite:
                                     request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                                     query_ctx: QueryContext) -> None:
         kwargs = {'timeout': timedelta(seconds=20)}
-        req = request_builder.build_query_request(query_statment, **kwargs)
+        req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
         exp_opts = {
             'timeout': 20000000
         }
+        assert cancel_token is None
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name

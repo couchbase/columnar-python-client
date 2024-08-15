@@ -15,12 +15,23 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import timedelta
+from threading import Event
 from typing import List, Optional
 
 from couchbase_columnar.common.core.query import (QueryMetadataCore,
                                                   QueryMetricsCore,
                                                   QueryWarningCore)
+
+
+@dataclass
+class CancelToken:
+    token: Event
+    poll_interval: float = 0.25
+
+    def cancel(self) -> None:
+        self.token.set()
 
 
 class QueryWarning:
