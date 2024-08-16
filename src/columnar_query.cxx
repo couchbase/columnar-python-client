@@ -53,7 +53,7 @@ create_columnar_response(couchbase::core::columnar::query_result resp,
   PyGILState_STATE state = PyGILState_Ensure();
   auto query_iter = reinterpret_cast<columnar_query_iterator*>(pyObj_query_iter);
   if (err.ec) {
-    pyObj_exc = pycbcc_build_exception(err.ec, __FILE__, __LINE__, err.message);
+    pyObj_exc = pycbcc_build_exception(err, __FILE__, __LINE__);
     if (pyObj_callback == nullptr) {
       query_iter->barrier_->set_value(pyObj_exc);
     } else {
@@ -61,9 +61,6 @@ create_columnar_response(couchbase::core::columnar::query_result resp,
       pyObj_args = PyTuple_New(1);
       PyTuple_SET_ITEM(pyObj_args, 0, pyObj_exc);
     }
-
-    // lets clear any errors
-    PyErr_Clear();
   } else {
     query_iter->set_query_result(std::move(resp));
     if (pyObj_callback == nullptr) {
@@ -81,7 +78,7 @@ create_columnar_response(couchbase::core::columnar::query_result resp,
       Py_DECREF(pyObj_callback_res);
     } else {
       pycbcc_set_python_exception(
-        PycbccError::InternalSDKError, __FILE__, __LINE__, "Columnar query callback failed.");
+        CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Columnar query callback failed.");
     }
     Py_DECREF(pyObj_args);
     Py_XDECREF(pyObj_callback);
@@ -336,9 +333,14 @@ handle_columnar_query([[maybe_unused]] PyObject* self, PyObject* args, PyObject*
   }
 
   if (!resp.has_value()) {
+    auto err_message =
+      resp.error().message.empty() ? resp.error().ec.message() : resp.error().message;
     CB_LOG_DEBUG(
-      "{} Error: code={}, message={}", "PYCBC", resp.error().ec.value(), resp.error().message);
-    pycbcc_set_python_exception(resp.error().ec, __FILE__, __LINE__, resp.error().message.c_str());
+      "{}: Unable to create query iterator.  Core pending operation error: code={}, message={}",
+      "PYCBCC:",
+      resp.error().ec.value(),
+      err_message);
+    pycbcc_set_python_exception(resp.error(), __FILE__, __LINE__);
     return nullptr;
   }
   query_iter->set_pending_operation(resp.value());

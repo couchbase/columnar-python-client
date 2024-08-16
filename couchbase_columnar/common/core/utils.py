@@ -28,7 +28,6 @@ from typing import (Any,
 from urllib.parse import quote
 
 from couchbase_columnar.common.deserializer import Deserializer
-from couchbase_columnar.common.exceptions import InvalidArgumentException
 
 T = TypeVar('T')
 E = TypeVar('E', bound=Enum)
@@ -40,16 +39,13 @@ def is_null_or_empty(value: Optional[str]) -> bool:
 
 def timedelta_as_microseconds(duration: timedelta) -> int:
     if duration and not isinstance(duration, timedelta):
-        raise InvalidArgumentException(
-            message="Expected timedelta instead of {}".format(duration)
-        )
+        raise ValueError(f"Expected timedelta instead of {duration}")
     return int(duration.total_seconds() * 1e6 if duration else 0)
 
 
 def to_microseconds(value: Union[timedelta, float, int]) -> int:
     if value and not isinstance(value, (timedelta, float, int)):
-        raise InvalidArgumentException(message=("Excepted value to be of type "
-                                                f"Union[timedelta, float, int] instead of {value}"))
+        raise ValueError(f"Excepted value to be of type Union[timedelta, float, int] instead of {value}")
     if not value:
         total_us = 0
     elif isinstance(value, timedelta):
@@ -70,17 +66,17 @@ def to_query_str(params: Dict[str, Any]) -> str:
 
 def validate_raw_dict(value: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(value, dict):
-        raise InvalidArgumentException("Raw option must be of type Dict[str, Any].")
+        raise ValueError("Raw option must be of type Dict[str, Any].")
     if not all(map(lambda k: isinstance(k, str), value.keys())):
-        raise InvalidArgumentException("All keys in raw dict must be a str.")
+        raise ValueError("All keys in raw dict must be a str.")
     return value
 
 
 def validate_path(value: str) -> str:
     if not isinstance(value, str):
-        raise InvalidArgumentException("Path option must be str.")
+        raise ValueError("Path option must be str.")
     if not path.exists(value):
-        raise InvalidArgumentException("Provided path does not exist.")
+        raise FileNotFoundError("Provided path does not exist.")
 
     return value
 
@@ -92,9 +88,9 @@ class ValidateBaseClass(Generic[T]):
         expected_base_class = self.__orig_class__.__args__[0]  # type: ignore[attr-defined]
         # this will pass w/ duck-typing which is okay
         if not issubclass(value.__class__, expected_base_class):
-            raise InvalidArgumentException((f"Expected value to be subclass of {expected_base_class} "
-                                            "(or implement necessary functionality for the "
-                                            f"{expected_base_class} base class)."))
+            raise ValueError((f"Expected value to be subclass of {expected_base_class} "
+                              "(or implement necessary functionality for the "
+                              f"{expected_base_class} base class)."))
         return value  # type: ignore[no-any-return]
 
 
@@ -106,11 +102,10 @@ class EnumToStr(Generic[E]):
             if value in map(lambda x: x.value, expected_type):
                 # TODO: use warning -- maybe don't want to allow str representation?
                 return value
-            raise InvalidArgumentException(f"Invalid str representation of {expected_type}. Received '{value}'.")
+            raise ValueError(f"Invalid str representation of {expected_type}. Received '{value}'.")
 
         if not isinstance(value, expected_type):
-            raise InvalidArgumentException(("Expected value to be of type "
-                                            f"{expected_type} instead of {type(value)}"))
+            raise ValueError(f"Expected value to be of type {expected_type} instead of {type(value)}")
 
         return value.value  # type: ignore[no-any-return]
 
@@ -119,8 +114,7 @@ class ValidateType(Generic[T]):
     def __call__(self, value: Any) -> T:
         expected_type = self.__orig_class__.__args__[0]  # type: ignore[attr-defined]
         if not isinstance(value, expected_type):
-            raise InvalidArgumentException(("Expected value to be of type "
-                                            f"{expected_type} instead of {type(value)}"))
+            raise ValueError(f"Expected value to be of type {expected_type} instead of {type(value)}")
         return value  # type: ignore[no-any-return]
 
 
@@ -128,11 +122,11 @@ class ValidateList(Generic[T]):
     def __call__(self, value: Any) -> List[T]:
         expected_type = self.__orig_class__.__args__[0]  # type: ignore[attr-defined]
         if not isinstance(value, list):
-            raise InvalidArgumentException("Expected value to be a list.")
+            raise ValueError("Expected value to be a list.")
         if not all(map(lambda x: isinstance(x, expected_type), value)):
             item_types = list(map(lambda x: type(x), value))
-            raise InvalidArgumentException(("Expected all items in list to be of type "
-                                            f"{expected_type}. Provided item types {item_types}."))
+            raise ValueError(("Expected all items in list to be of type "
+                              f"{expected_type}. Provided item types {item_types}."))
         # we are returning List[T]
         return value
 

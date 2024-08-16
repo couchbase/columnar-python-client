@@ -23,7 +23,6 @@ from threading import Event
 from typing import (Any,
                     Coroutine,
                     List,
-                    NoReturn,
                     Optional,
                     Union)
 
@@ -34,11 +33,7 @@ else:
     from collections.abc import AsyncIterator as PyAsyncIterator
     from collections.abc import Iterator
 
-from couchbase_columnar.common.exceptions import (AlreadyQueriedException,
-                                                  ColumnarException,
-                                                  QueryOperationCanceledException)
-
-# from couchbase_columnar.common.result import AsyncQueryResult
+from couchbase_columnar.common.exceptions import ColumnarError, InternalSDKError
 from couchbase_columnar.common.query import QueryMetadata
 
 
@@ -55,12 +50,6 @@ class StreamingState(IntEnum):
     @staticmethod
     def okay_to_iterate(state: StreamingState) -> bool:
         return state == StreamingState.Started
-
-    @staticmethod
-    def get_streaming_exception(state: StreamingState) -> ColumnarException:
-        if state == StreamingState.Cancelled:
-            return QueryOperationCanceledException('Cannot stream as query operation has been canceled.')
-        return AlreadyQueriedException('Query has already previously executed.')
 
 
 class StreamingExecutor(ABC):
@@ -91,10 +80,6 @@ class StreamingExecutor(ABC):
 
     @abstractmethod
     def get_metadata(self) -> QueryMetadata:
-        raise NotImplementedError
-
-    @abstractmethod
-    def handle_exception(self, ex: Exception) -> NoReturn:
         raise NotImplementedError
 
     @abstractmethod
@@ -130,10 +115,10 @@ class BlockingIterator(Iterator[Any]):
             # TODO:  get metadata automatically?
             # self._executor.set_metadata()
             raise
-        except ColumnarException as ex:
-            raise ex
+        except ColumnarError as err:
+            raise err
         except Exception as ex:
-            self._executor.handle_exception(ex)
+            raise InternalSDKError(str(ex))
 
 
 class AsyncIterator(PyAsyncIterator[Any]):
@@ -153,7 +138,7 @@ class AsyncIterator(PyAsyncIterator[Any]):
             # TODO:  get metadata automatically?
             # self._executor.set_metadata()
             raise
-        except ColumnarException as ex:
-            raise ex
+        except ColumnarError as err:
+            raise err
         except Exception as ex:
-            self._executor.handle_exception(ex)
+            raise InternalSDKError(str(ex))

@@ -33,9 +33,6 @@ class Scope:
         self._database = database
         self._scope_name = scope_name
         self._request_builder = ScopeRequestBuilder(self.client_adapter, self._database.name, self.name)
-        # Allow the default max_workers which is (as of Python 3.8): min(32, os.cpu_count() + 4).
-        # We can add an option later if we see a need
-        self._tp_executor = ThreadPoolExecutor()
 
     @property
     def client_adapter(self) -> _ClientAdapter:
@@ -50,6 +47,13 @@ class Scope:
             str: The name of this :class:`~couchbase_columnar.protocol.scope.Scope` instance.
         """
         return self._scope_name
+
+    @property
+    def threadpool_executor(self) -> ThreadPoolExecutor:
+        """
+            **INTERNAL**
+        """
+        return self._database.threadpool_executor
 
     def _execute_query_in_background(self, executor: _QueryStreamingExecutor) -> BlockingQueryResult:
         """
@@ -69,10 +73,11 @@ class Scope:
                                            cancel_token=cancel_token,
                                            lazy_execute=lazy_execute)
         if executor.cancel_token is not None:
-            # TODO:  warning or exception?  lazy is only available for the non-cancellable path
-            # if lazy_execute is not None:
-            #     raise Exception()
-            ft = self._tp_executor.submit(self._execute_query_in_background, executor)
+            executor.set_threadpool_executor(self.threadpool_executor)
+            if lazy_execute is True:
+                raise RuntimeError(('Cannot cancel, via cancel token, a query that is executed lazily.'
+                                    ' Queries executed lazily can be cancelled only after iteration begins.'))
+            ft = self.threadpool_executor.submit(self._execute_query_in_background, executor)
             return ft
         else:
             if executor.lazy_execute is not True:

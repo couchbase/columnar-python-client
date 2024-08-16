@@ -19,18 +19,18 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Event
 from typing import (TYPE_CHECKING,
                     Any,
-                    NoReturn,
                     Optional,
                     Union)
 
-from couchbase_columnar.common.exceptions import ColumnarException, QueryOperationCanceledException
+from couchbase_columnar.common.exceptions import (ColumnarError,
+                                                  InternalSDKError,
+                                                  QueryOperationCanceledError)
 from couchbase_columnar.common.query import CancelToken, QueryMetadata
 from couchbase_columnar.common.streaming import StreamingExecutor, StreamingState
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
-from couchbase_columnar.protocol.exceptions import (PYCBCC_ERROR_MAP,
-                                                    CoreColumnarException,
+from couchbase_columnar.protocol.exceptions import (CoreColumnarError,
                                                     ErrorMapper,
-                                                    ExceptionMap)
+                                                    SdkError)
 
 if TYPE_CHECKING:
     from couchbase_columnar.protocol.core.client import _CoreClient
@@ -58,8 +58,8 @@ class _QueryStreamingExecutor(StreamingExecutor):
         self._metadata: Optional[QueryMetadata] = None
         self._cancel_token: Optional[CancelToken] = cancel_token
         self._query_iter: CoreQueryIterator
-        self._tp_executor = ThreadPoolExecutor(max_workers=2)
-        self._query_res_ft: Future[Union[bool, ColumnarException]]
+        self._tp_executor: ThreadPoolExecutor
+        self._query_res_ft: Future[Union[bool, SdkError]]
 
     @property
     def cancel_token(self) -> Optional[Event]:
@@ -116,14 +116,6 @@ class _QueryStreamingExecutor(StreamingExecutor):
                 raise RuntimeError('Query metadata is only available after all rows have been iterated.')
         return self._metadata
 
-    def handle_exception(self, ex: Exception) -> NoReturn:
-        """
-            **INTERNAL**
-        """
-        exc_cls = PYCBCC_ERROR_MAP.get(ExceptionMap.InternalSDKException.value, ColumnarException)
-        excptn = exc_cls(message=str(ex))
-        raise excptn
-
     def set_metadata(self) -> None:
         """
             **INTERNAL**
@@ -133,26 +125,30 @@ class _QueryStreamingExecutor(StreamingExecutor):
 
         try:
             query_metadata = self._query_iter.metadata()
-        except ColumnarException as ex:
-            raise ex
+        except ColumnarError as err:
+            raise err
         except Exception as ex:
-            exc_cls = PYCBCC_ERROR_MAP.get(ExceptionMap.InternalSDKException.value, ColumnarException)
-            excptn = exc_cls(message=str(ex))
-            raise excptn
+            raise InternalSDKError(str(ex))
 
-        if isinstance(query_metadata, CoreColumnarException):
-            raise ErrorMapper.build_exception(query_metadata)
+        if isinstance(query_metadata, CoreColumnarError):
+            raise ErrorMapper.build_error(query_metadata)
         if query_metadata is None:
             return
         self._metadata = QueryMetadata(query_metadata)
 
-    def _get_core_query_result(self) -> Union[bool, ColumnarException]:
+    def set_threadpool_executor(self, tp_executor: ThreadPoolExecutor) -> None:
+        """
+            **INTERNAL**
+        """
+        self._tp_executor = tp_executor
+
+    def _get_core_query_result(self) -> Union[bool, SdkError]:
         """
             **INTERNAL**
         """
         res = self._query_iter.wait_for_core_query_result()
-        if isinstance(res, CoreColumnarException):
-            return ErrorMapper.build_exception(res)
+        if isinstance(res, CoreColumnarError):
+            return ErrorMapper.build_error(res)
         return res
 
     def submit_query(self) -> None:
@@ -160,19 +156,20 @@ class _QueryStreamingExecutor(StreamingExecutor):
             **INTERNAL**
         """
         if not StreamingState.okay_to_stream(self._streaming_state):
-            raise StreamingState.get_streaming_exception(self._streaming_state)
+            raise RuntimeError('Query has been canceled or previously executed.')
 
         self._streaming_state = StreamingState.Started
-        query_iter = self._client.columnar_query_op(self._request)
-        if isinstance(query_iter, CoreColumnarException):
-            raise ErrorMapper.build_exception(query_iter)
+        try:
+            self._query_iter = self._client.columnar_query_op(self._request)
+        except Exception as ex:
+            # suppress context, we know we have raised an error from the bindings
+            if isinstance(ex, CoreColumnarError):
+                raise ErrorMapper.build_error(ex) from None
+            raise InternalSDKError(str(ex)) from None
 
-        if not isinstance(query_iter, CoreQueryIterator):
-            raise ValueError('Columnar query op unsuccessful.')
-        self._query_iter = query_iter
         res = self._query_iter.wait_for_core_query_result()
-        if isinstance(res, CoreColumnarException):
-            raise ErrorMapper.build_exception(res)
+        if isinstance(res, CoreColumnarError):
+            raise ErrorMapper.build_error(res)
 
     def _wait_for_result(self) -> None:
         """
@@ -181,16 +178,13 @@ class _QueryStreamingExecutor(StreamingExecutor):
         if self._cancel_token is None:
             raise ValueError('Cannot wait in background if cancel token not provided.')
 
-        if self._cancel_token.poll_interval is None:
-            self._cancel_token.poll_interval = 0.25
-
         while not self._query_res_ft.done() and self._streaming_state != StreamingState.Cancelled:
             if self._cancel_token.token.wait(self._cancel_token.poll_interval):
                 # this means we want to cancel
                 self.cancel()
 
         res = self._query_res_ft.result()
-        if isinstance(res, QueryOperationCanceledException):
+        if isinstance(res, QueryOperationCanceledError):
             pass
         elif isinstance(res, Exception):
             raise res
@@ -200,15 +194,17 @@ class _QueryStreamingExecutor(StreamingExecutor):
             **INTERNAL**
         """
         if not StreamingState.okay_to_stream(self._streaming_state):
-            raise StreamingState.get_streaming_exception(self._streaming_state)
-        self._streaming_state = StreamingState.Started
-        res = self._client.columnar_query_op(self._request)
-        if isinstance(res, CoreColumnarException):
-            raise ErrorMapper.build_exception(res)
+            raise RuntimeError('Query has been canceled or previously executed.')
 
-        if not isinstance(res, CoreQueryIterator):
-            raise ValueError('Columnar query op unsuccessful.')
-        self._query_iter = res
+        self._streaming_state = StreamingState.Started
+        try:
+            self._query_iter = self._client.columnar_query_op(self._request)
+        except Exception as ex:
+            # suppress context, we know we have raised an error from the bindings
+            if isinstance(ex, CoreColumnarError):
+                raise ErrorMapper.build_error(ex) from None
+            raise InternalSDKError(str(ex)) from None
+
         self._query_res_ft = self._tp_executor.submit(self._get_core_query_result)
         self._wait_for_result()
 
@@ -224,8 +220,8 @@ class _QueryStreamingExecutor(StreamingExecutor):
             raise StopIteration
 
         row = next(self._query_iter)
-        if isinstance(row, CoreColumnarException):
-            raise ErrorMapper.build_exception(row)
+        if isinstance(row, CoreColumnarError):
+            raise ErrorMapper.build_error(row)
         # should only be None once query request is complete and _no_ errors found
         if row is None:
             self._streaming_state = StreamingState.Completed

@@ -17,12 +17,10 @@ from __future__ import annotations
 
 from typing import (TYPE_CHECKING,
                     Callable,
-                    Optional,
-                    Union)
+                    Optional)
 
 from couchbase_columnar.protocol.core import PyCapsuleType
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
-from couchbase_columnar.protocol.exceptions import CoreColumnarException
 from couchbase_columnar.protocol.pycbcc_core import (close_connection,
                                                      columnar_query,
                                                      create_connection)
@@ -68,7 +66,7 @@ class _CoreClient:
         """
         return close_connection(self.connection, **req.to_req_dict())
 
-    def connect(self, req: ConnectRequest) -> Union[CoreColumnarException, PyCapsuleType]:
+    def connect(self, req: ConnectRequest) -> PyCapsuleType:
         """
         **INTERNAL**
         """
@@ -80,7 +78,7 @@ class _CoreClient:
                           req: QueryRequest,
                           callback: Optional[Callable[..., None]] = None,
                           row_callback: Optional[Callable[..., None]] = None,
-                          run_in_background: Optional[bool] = None) -> Optional[CoreQueryIterator]:
+                          run_in_background: Optional[bool] = None) -> CoreQueryIterator:
         """
         **INTERNAL**
         """

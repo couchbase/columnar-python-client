@@ -22,7 +22,6 @@ from typing import (TYPE_CHECKING,
                     Optional)
 
 from couchbase_columnar.common.enums import KnownConfigProfiles
-from couchbase_columnar.common.exceptions import InvalidArgumentException
 
 if TYPE_CHECKING:
     from couchbase_columnar.common.options import ClusterOptions
@@ -95,10 +94,10 @@ class ConfigProfiles():
                 toward. The ConfigProfile options will override any matching option(s) previously set.
 
         Raises:
-            :class:`~couchbase_columnar.exceptions.InvalidArgumentException`: If the specified profile is not registered.
+            `ValueError`: If the specified profile is not registered.
         """  # noqa: E501
         if profile_name not in self._profiles:
-            raise InvalidArgumentException(f'{profile_name} is not a registered profile.')
+            raise ValueError(f'{profile_name} is not a registered profile.')
 
         self._profiles[profile_name].apply(options)
 
@@ -110,16 +109,14 @@ class ConfigProfiles():
 
         Args:
             profile_name (str):  The name of the :class:`~couchbase_columnar.options.ConfigProfile` to register.
-            profile (:class:`~couchbase_columnar.options.ConfigProfile`): The :class:`~couchbase_columnar.options.ConfigProfile`
-                to register.
+            profile (:class:`~couchbase_columnar.options.ConfigProfile`): The :class:`~couchbase_columnar.options.ConfigProfile` to register.
 
         Raises:
-            :class:`~couchbase_columnar.exceptions.InvalidArgumentException`: If the specified profile is not derived
-            from :class:`~couchbase_columnar.options.ConfigProfile`.
+            `ValueError`: If the specified profile is not derived from :class:`~couchbase_columnar.options.ConfigProfile`.
 
         """  # noqa: E501
         if not issubclass(profile.__class__, ConfigProfile):
-            raise InvalidArgumentException('A Configuration Profile must be derived from ConfigProfile')
+            raise ValueError('A Configuration Profile must be derived from ConfigProfile')
 
         self._profiles[profile_name] = profile
 

@@ -28,7 +28,7 @@
 #include "result.hxx"
 
 void
-add_ops_enum(PyObject* pyObj_module)
+add_core_enums(PyObject* pyObj_module)
 {
   PyObject* pyObj_enum_module = PyImport_ImportModule("enum");
   if (!pyObj_enum_module) {
@@ -51,6 +51,26 @@ add_ops_enum(PyObject* pyObj_module)
   Py_DECREF(pyObj_kwargs);
 
   if (PyModule_AddObject(pyObj_module, "operations", pyObj_operations) < 0) {
+    // only need to Py_DECREF on failure to add when using PyModule_AddObject()
+    Py_XDECREF(pyObj_operations);
+    return;
+  }
+
+  pyObj_enum_values = PyUnicode_FromString(CoreErrors::ALL_CORE_ERRORS());
+  pyObj_enum_name = PyUnicode_FromString("CoreErrors");
+  // PyTuple_Pack returns new reference, need to Py_DECREF values provided
+  pyObj_args = PyTuple_Pack(2, pyObj_enum_name, pyObj_enum_values);
+  Py_DECREF(pyObj_enum_name);
+  Py_DECREF(pyObj_enum_values);
+
+  pyObj_kwargs = PyDict_New();
+  PyObject_SetItem(
+    pyObj_kwargs, PyUnicode_FromString("module"), PyModule_GetNameObject(pyObj_module));
+  pyObj_operations = PyObject_Call(pyObj_enum_class, pyObj_args, pyObj_kwargs);
+  Py_DECREF(pyObj_args);
+  Py_DECREF(pyObj_kwargs);
+
+  if (PyModule_AddObject(pyObj_module, "core_errors", pyObj_operations) < 0) {
     // only need to Py_DECREF on failure to add when using PyModule_AddObject()
     Py_XDECREF(pyObj_operations);
     return;
@@ -96,10 +116,8 @@ columnar_query(PyObject* self, PyObject* args, PyObject* kwargs)
 {
   PyObject* res = handle_columnar_query(self, args, kwargs);
   if (res == nullptr && PyErr_Occurred() == nullptr) {
-    pycbcc_set_python_exception(PycbccError::UnsuccessfulOperation,
-                                __FILE__,
-                                __LINE__,
-                                "Unable to perform Columnar query operation.");
+    pycbcc_set_python_exception(
+      CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to perform Columnar query operation.");
   }
   return res;
 }
@@ -110,7 +128,7 @@ create_connection(PyObject* self, PyObject* args, PyObject* kwargs)
   PyObject* res = handle_create_connection(self, args, kwargs);
   if (res == nullptr && PyErr_Occurred() == nullptr) {
     pycbcc_set_python_exception(
-      PycbccError::UnsuccessfulOperation, __FILE__, __LINE__, "Unable to create connection.");
+      CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to create connection.");
   }
   return res;
 }
@@ -120,12 +138,16 @@ get_connection_information(PyObject* self, PyObject* args, PyObject* kwargs)
 {
   PyObject* res = get_connection_info(self, args, kwargs);
   if (res == nullptr && PyErr_Occurred() == nullptr) {
-    pycbcc_set_python_exception(PycbccError::UnsuccessfulOperation,
-                                __FILE__,
-                                __LINE__,
-                                "Unable to get connection information.");
+    pycbcc_set_python_exception(
+      CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to get connection information.");
   }
   return res;
+}
+
+static PyObject*
+test_exception_builder(PyObject* self, PyObject* args)
+{
+  return build_exception(self, args);
 }
 
 static PyObject*
@@ -134,7 +156,7 @@ close_connection(PyObject* self, PyObject* args, PyObject* kwargs)
   PyObject* res = handle_close_connection(self, args, kwargs);
   if (res == nullptr && PyErr_Occurred() != nullptr) {
     pycbcc_set_python_exception(
-      PycbccError::UnsuccessfulOperation, __FILE__, __LINE__, "Unable to close connection.");
+      CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to close connection.");
   }
   return res;
 }
@@ -155,6 +177,10 @@ static struct PyMethodDef methods[] = { { "create_connection",
                                           (PyCFunction)columnar_query,
                                           METH_VARARGS | METH_KEYWORDS,
                                           "Execute a streaming columnar query" },
+                                        { "_test_exception_builder",
+                                          (PyCFunction)test_exception_builder,
+                                          METH_VARARGS,
+                                          "Test method to build exceptions from bindings" },
                                         { nullptr, nullptr, 0, nullptr } };
 
 static struct PyModuleDef pycbcc_core_module = { { PyObject_HEAD_INIT(NULL) nullptr, 0, nullptr },
@@ -178,8 +204,8 @@ PyInit_pycbcc_core(void)
     return nullptr;
   }
 
-  PyObject* exception_base_type;
-  if (pycbcc_exception_base_type_init(&exception_base_type) < 0) {
+  PyObject* core_error_type;
+  if (pycbcc_core_error_type_init(&core_error_type) < 0) {
     return nullptr;
   }
 
@@ -205,9 +231,9 @@ PyInit_pycbcc_core(void)
     return nullptr;
   }
 
-  Py_INCREF(exception_base_type);
-  if (PyModule_AddObject(m, "exception", exception_base_type) < 0) {
-    Py_DECREF(exception_base_type);
+  Py_INCREF(core_error_type);
+  if (PyModule_AddObject(m, "core_error", core_error_type) < 0) {
+    Py_DECREF(core_error_type);
     Py_DECREF(m);
     return nullptr;
   }
@@ -226,7 +252,7 @@ PyInit_pycbcc_core(void)
     return nullptr;
   }
 
-  add_ops_enum(m);
+  add_core_enums(m);
   add_constants(m);
   return m;
 }

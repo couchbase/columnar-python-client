@@ -25,7 +25,6 @@
 
 struct result {
   PyObject_HEAD PyObject* dict;
-  std::error_code ec;
 };
 
 int

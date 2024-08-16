@@ -18,8 +18,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import Union
 
-from couchbase_columnar.common.exceptions import InvalidArgumentException
-
 
 class QueryScanConsistency(Enum):
     """
@@ -45,8 +43,8 @@ class IpProtocol(Enum):
             elif value == cls.ForceIPv6.value:
                 return cls.ForceIPv6
 
-        raise InvalidArgumentException(message=(f"{value} is not a valid IpProtocol option. "
-                                                "Excepted str representation of type IpProtocol."))
+        raise ValueError((f"{value} is not a valid IpProtocol option. "
+                          "Excepted str representation of type IpProtocol."))
 
     @classmethod
     def to_str(cls, value: Union[IpProtocol, str]) -> str:
@@ -60,10 +58,10 @@ class IpProtocol(Enum):
             elif value == cls.ForceIPv6.value:
                 return cls.ForceIPv6.value
 
-        raise InvalidArgumentException(message=(f"{value} is not a valid IpProtocol option. "
-                                                "Excepted IP Protocol mode to be either of type "
-                                                "IpProtocol or str representation "
-                                                "of IpProtocol."))
+        raise ValueError((f"{value} is not a valid IpProtocol option. "
+                          "Excepted IP Protocol mode to be either of type "
+                          "IpProtocol or str representation "
+                          "of IpProtocol."))
 
 
 class KnownConfigProfiles(Enum):
@@ -81,8 +79,8 @@ class KnownConfigProfiles(Enum):
             if value == cls.WanDevelopment.value:
                 return cls.WanDevelopment
 
-        raise InvalidArgumentException(message=(f"{value} is not a valid KnownConfigProfiles option. "
-                                                "Excepted str representation of type KnownConfigProfiles."))
+        raise ValueError((f"{value} is not a valid KnownConfigProfiles option. "
+                          "Excepted str representation of type KnownConfigProfiles."))
 
     @classmethod
     def to_str(cls, value: Union[KnownConfigProfiles, str]) -> str:
@@ -93,7 +91,7 @@ class KnownConfigProfiles(Enum):
         if isinstance(value, str):
             return value
 
-        raise InvalidArgumentException(message=(f"{value} is not a valid KnownConfigProfiles option. "
-                                                "Excepted config profile to be either of type "
-                                                "KnownConfigProfiles or str representation "
-                                                "of KnownConfigProfiles."))
+        raise ValueError((f"{value} is not a valid KnownConfigProfiles option. "
+                          "Excepted config profile to be either of type "
+                          "KnownConfigProfiles or str representation "
+                          "of KnownConfigProfiles."))

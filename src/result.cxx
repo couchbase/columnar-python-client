@@ -37,33 +37,6 @@ result_dealloc([[maybe_unused]] result* self)
 }
 
 static PyObject*
-result__strerror__(result* self, [[maybe_unused]] PyObject* args)
-{
-  if (self->ec) {
-    return PyUnicode_FromString(self->ec.message().c_str());
-  }
-  Py_RETURN_NONE;
-}
-
-static PyObject*
-result__err__(result* self, [[maybe_unused]] PyObject* args)
-{
-  if (self->ec) {
-    return PyLong_FromLong(self->ec.value());
-  }
-  Py_RETURN_NONE;
-}
-
-static PyObject*
-result__category__(result* self, [[maybe_unused]] PyObject* args)
-{
-  if (self->ec) {
-    return PyUnicode_FromString(self->ec.category().name());
-  }
-  Py_RETURN_NONE;
-}
-
-static PyObject*
 result__get__(result* self, PyObject* args)
 {
   const char* field_name = nullptr;
@@ -94,21 +67,11 @@ result__get__(result* self, PyObject* args)
 static PyObject*
 result__str__(result* self)
 {
-  const char* format_string = "result:{err=%i, err_string=%s, value=%S}";
-  return PyUnicode_FromFormat(
-    format_string, self->ec.value(), self->ec.message().c_str(), self->dict);
+  const char* format_string = "result:{value=%S}";
+  return PyUnicode_FromFormat(format_string, self->dict);
 }
 
 static PyMethodDef result_methods[] = {
-  { "strerror",
-    (PyCFunction)result__strerror__,
-    METH_NOARGS,
-    PyDoc_STR("String description of error") },
-  { "err", (PyCFunction)result__err__, METH_NOARGS, PyDoc_STR("Integer error code") },
-  { "err_category",
-    (PyCFunction)result__category__,
-    METH_NOARGS,
-    PyDoc_STR("error category, expressed as a string") },
   { "get", (PyCFunction)result__get__, METH_VARARGS, PyDoc_STR("get field in result object") },
   { NULL, NULL, 0, NULL }
 };
@@ -121,11 +84,10 @@ static struct PyMemberDef result_members[] = { { "raw_result",
                                                { NULL } };
 
 static PyObject*
-result_new(PyTypeObject* type, PyObject*, PyObject*)
+result__new__(PyTypeObject* type, PyObject*, PyObject*)
 {
   result* self = reinterpret_cast<result*>(type->tp_alloc(type, 0));
   self->dict = PyDict_New();
-  self->ec = std::error_code();
   return reinterpret_cast<PyObject*>(self);
 }
 
@@ -143,7 +105,7 @@ pycbcc_result_type_init(PyObject** ptr)
   p->tp_doc = "Result of operation on client";
   p->tp_basicsize = sizeof(result);
   p->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-  p->tp_new = result_new;
+  p->tp_new = result__new__;
   p->tp_dealloc = (destructor)result_dealloc;
   p->tp_methods = result_methods;
   p->tp_members = result_members;
@@ -354,8 +316,7 @@ get_next_row(columnar_query_result_variant result,
 
   PyGILState_STATE state = PyGILState_Ensure();
   if (err.ec) {
-    pyObj_exc = pycbcc_build_exception(
-      err.ec, __FILE__, __LINE__, "Received error retrieving query stream next row.");
+    pyObj_exc = pycbcc_build_exception(err, __FILE__, __LINE__);
     if (pyObj_row_callback == nullptr) {
       barrier->set_value(pyObj_exc);
     } else {
@@ -373,8 +334,7 @@ get_next_row(columnar_query_result_variant result,
       Py_INCREF(Py_None);
       pyObj_result = Py_None;
     } else {
-      pyObj_result =
-        pycbcc_build_exception(err.ec, __FILE__, __LINE__, "Error retrieving next query row.");
+      pyObj_result = pycbcc_build_exception(err, __FILE__, __LINE__);
     }
 
     if (pyObj_row_callback == nullptr) {
@@ -391,10 +351,8 @@ get_next_row(columnar_query_result_variant result,
     if (pyObj_callback_res) {
       Py_DECREF(pyObj_callback_res);
     } else {
-      pycbcc_set_python_exception(PycbccError::InternalSDKError,
-                                  __FILE__,
-                                  __LINE__,
-                                  "Columnar query next row callback failed.");
+      pycbcc_set_python_exception(
+        CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Columnar query next row callback failed.");
     }
     Py_DECREF(pyObj_args);
   }
@@ -426,7 +384,7 @@ columnar_query_iterator_iternext(PyObject* self)
       if (result == nullptr)
     {
       PyObject* pyObj_exc = pycbcc_build_exception(
-        PycbccError::UnsuccessfulOperation, __FILE__, __LINE__, "Error retrieving next query row.");
+        CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Error retrieving next query row.");
       return pyObj_exc;
     }
     return result;

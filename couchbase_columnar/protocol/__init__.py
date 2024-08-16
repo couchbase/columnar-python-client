@@ -145,7 +145,7 @@ def enable_protocol_logger_to_save_network_traffic_to_file(filename: str) -> Non
         filename (str): The name of the file the protocol logger will write to.
 
     Raises:
-        InvalidArgumentException: If a filename is not provided.
+        `ValueError`: If a filename is not provided.
     """
     _PYCBCC_LOGGER.enable_protocol_logger(filename)
 

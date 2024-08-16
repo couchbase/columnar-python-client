@@ -13,9 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from concurrent.futures import Future
-from threading import Event
-from typing import Optional, overload
+from concurrent.futures import Future, ThreadPoolExecutor
+from typing import overload
 
 from typing_extensions import Unpack
 
@@ -34,6 +33,9 @@ class Scope:
 
     @property
     def name(self) -> str: ...
+
+    @property
+    def threadpool_executor(self) -> ThreadPoolExecutor: ...
 
     @overload
     def execute_query(self, statement: str) -> BlockingQueryResult: ...
