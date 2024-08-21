@@ -13,12 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from couchbase_columnar.common.exceptions import ColumnarException as ColumnarException  # noqa: F401
-from couchbase_columnar.common.exceptions import (  # noqa: F401
-    FeatureUnavailableException as FeatureUnavailableException)
-from couchbase_columnar.common.exceptions import InternalSDKException as InternalSDKException  # noqa: F401
-from couchbase_columnar.common.exceptions import InvalidArgumentException as InvalidArgumentException  # noqa: F401
-from couchbase_columnar.common.exceptions import QueryException as QueryException  # noqa: F401
-from couchbase_columnar.common.exceptions import TimeoutException as TimeoutException  # noqa: F401
-from couchbase_columnar.common.exceptions import (  # noqa: F401
-    UnsuccessfulOperationException as UnsuccessfulOperationException)
+from couchbase_columnar.common.exceptions import ColumnarError as ColumnarError  # noqa: F401
+from couchbase_columnar.common.exceptions import InternalSDKError as InternalSDKError  # noqa: F401
+from couchbase_columnar.common.exceptions import InvalidCredentialError as InvalidCredentialError  # noqa: F401
+from couchbase_columnar.common.exceptions import QueryError as QueryError  # noqa: F401
+from couchbase_columnar.common.exceptions import TimeoutError as TimeoutError  # noqa: F401

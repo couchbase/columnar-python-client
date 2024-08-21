@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from couchbase_columnar.common.streaming import StreamingState
-from couchbase_columnar.exceptions import QueryException
+from couchbase_columnar.exceptions import QueryError
 from couchbase_columnar.options import QueryOptions
 from couchbase_columnar.query import CancelToken, QueryScanConsistency
 from couchbase_columnar.result import BlockingQueryResult
@@ -335,7 +335,7 @@ class QueryTestSuite:
 
     def test_query_raises_exception_prior_to_iterating(self, test_env: BlockingTestEnvironment) -> None:
         statement = "I'm not N1QL!"
-        with pytest.raises(QueryException):
+        with pytest.raises(QueryError):
             test_env.cluster_or_scope.execute_query(statement)
 
     def test_query_raw_options(self,
@@ -382,7 +382,7 @@ class QueryTestSuite:
         cancel_token = CancelToken(Event())
         ft = test_env.cluster_or_scope.execute_query(statement, cancel_token=cancel_token)
         assert isinstance(ft, Future)
-        with pytest.raises(QueryException):
+        with pytest.raises(QueryError):
             ft.result()
 
     def test_query_with_lazy_execution(self,
@@ -405,7 +405,7 @@ class QueryTestSuite:
         result = test_env.cluster_or_scope.execute_query(statement, QueryOptions(lazy_execute=True))
         expected_state = StreamingState.NotStarted
         assert result._executor.streaming_state == expected_state
-        with pytest.raises(QueryException):
+        with pytest.raises(QueryError):
             [r for r in result.rows()]
 
 

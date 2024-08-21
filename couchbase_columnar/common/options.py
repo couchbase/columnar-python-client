@@ -79,7 +79,7 @@ class ClusterOptions(ClusterOptionsBase):
                 toward ClusterOptions.
 
         Raises:
-            :class:`~couchbase_columnar.exceptions.InvalidArgumentException`: If the specified profile is not registered.
+            `ValueError`: If the specified profile is not registered.
 
         """  # noqa: E501
         prof_name = profile_name.value if isinstance(profile_name, KnownConfigProfiles) else profile_name
@@ -96,7 +96,7 @@ class ClusterOptions(ClusterOptionsBase):
             profile_name ([:class:`~couchbase_columnar.options.KnownConfigProfiles`, str]):  The name of the profile to apply toward ClusterOptions.
 
         Raises:
-            :class:`~couchbase_columnar.exceptions.InvalidArgumentException`: If the specified profile is not registered.
+            `ValueError`: If the specified profile is not registered.
 
         """  # noqa: E501
         opts = cls()

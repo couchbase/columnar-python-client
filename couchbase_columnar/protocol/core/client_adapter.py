@@ -30,17 +30,12 @@ else:
 
 from couchbase_columnar.common.credential import Credential
 from couchbase_columnar.common.deserializer import Deserializer
-from couchbase_columnar.common.exceptions import (ColumnarException,
-                                                  InternalSDKException,
-                                                  ServiceUnavailableException)
+from couchbase_columnar.common.exceptions import ColumnarError, InternalSDKError
 from couchbase_columnar.protocol.connection import _ConnectionDetails
 from couchbase_columnar.protocol.core.client import _CoreClient
 from couchbase_columnar.protocol.core.request import CloseConnectionRequest, ConnectRequest
 from couchbase_columnar.protocol.core.result import CoreResult
-from couchbase_columnar.protocol.exceptions import (PYCBCC_ERROR_MAP,
-                                                    CoreColumnarException,
-                                                    ErrorMapper,
-                                                    ExceptionMap)
+from couchbase_columnar.protocol.exceptions import CoreColumnarError, ErrorMapper
 from couchbase_columnar.protocol.options import OptionsBuilder
 
 ReqT = TypeVar('ReqT', ConnectRequest, CloseConnectionRequest)
@@ -64,25 +59,20 @@ class BlockingWrapper:
             def wrapped_fn(self: _ClientAdapter, req: ReqT) -> Optional[CoreResult]:
                 try:
                     ret = fn(self, req)
-                    if isinstance(ret, CoreColumnarException):
-                        raise ErrorMapper.build_exception(ret)
+                    if isinstance(ret, CoreColumnarError):
+                        raise ErrorMapper.build_error(ret)
                     if return_cls is None:
                         return None
                     elif return_cls is True:
                         return ret
                     elif ret is None:
-                        raise InternalSDKException('Expected return value to be non-empty.')
+                        raise InternalSDKError('Expected return value to be non-empty.')
 
                     return return_cls(ret)
-                except ColumnarException as e:
-                    if isinstance(e, ServiceUnavailableException) and fn.__name__ == '_get_cluster_info':
-                        e._message = ('If using Couchbase Server < 6.6, '
-                                      'a bucket needs to be opened prior to cluster level operations')
-                    raise e
+                except (ColumnarError, InternalSDKError) as err:
+                    raise err
                 except Exception as ex:
-                    exc_cls = PYCBCC_ERROR_MAP.get(ExceptionMap.InternalSDKException.value, ColumnarException)
-                    excptn = exc_cls(message=str(ex))
-                    raise excptn from None
+                    raise InternalSDKError(str(ex))
 
             return wrapped_fn
         return decorator
@@ -153,14 +143,11 @@ class _ClientAdapter:
 
         try:
             self.client.close_connection(req)
-        except ColumnarException as e:
-            raise e
         except Exception as ex:
-            if isinstance(ex, CoreColumnarException):
-                raise ErrorMapper.build_exception(ex)
-            exc_cls = PYCBCC_ERROR_MAP.get(ExceptionMap.InternalSDKException.value, ColumnarException)
-            excptn = exc_cls(message=str(ex))
-            raise excptn from None
+            # suppress context, we know we have raised an error from the bindings
+            if isinstance(ex, CoreColumnarError):
+                raise ErrorMapper.build_error(ex) from None
+            raise InternalSDKError(str(ex)) from None
 
     @BlockingWrapper.block(True)
     def connect(self, req: ConnectRequest) -> None:
@@ -171,8 +158,8 @@ class _ClientAdapter:
             self._client = _CoreClient()
 
         ret = self.client.connect(req)
-        if isinstance(ret, CoreColumnarException):
-            raise ErrorMapper.build_exception(ret)
+        if isinstance(ret, CoreColumnarError):
+            raise ErrorMapper.build_error(ret)
         self._client.connection = ret
 
     def reset_client(self) -> None:
@@ -184,5 +171,5 @@ class _ClientAdapter:
 
 
 InputWrappedFunc: TypeAlias = Callable[[_ClientAdapter, ReqT],
-                                       Optional[Union[CoreColumnarException, CoreResult]]]
+                                       Optional[Union[CoreColumnarError, CoreResult]]]
 OutputWrappedFunc: TypeAlias = Callable[[_ClientAdapter, ReqT], Optional[CoreResult]]

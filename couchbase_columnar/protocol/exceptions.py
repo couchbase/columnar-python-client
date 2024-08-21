@@ -15,14 +15,13 @@
 
 from __future__ import annotations
 
-import json
-import re
 import sys
 from enum import Enum
 from typing import (Any,
                     Dict,
                     Optional,
-                    Pattern)
+                    Union,
+                    cast)
 
 if sys.version_info < (3, 10):
     from typing_extensions import TypeAlias
@@ -30,250 +29,123 @@ else:
     from typing import TypeAlias
 
 from couchbase_columnar.common.core.utils import is_null_or_empty
-from couchbase_columnar.common.exceptions import (AbstractBaseColumnarException,
-                                                  ColumnarException,
-                                                  ErrorContext,
-                                                  HTTPErrorContext)
-from couchbase_columnar.protocol.pycbcc_core import exception
+from couchbase_columnar.common.exceptions import (ColumnarError,
+                                                  InternalSDKError,
+                                                  QueryOperationCanceledError)
+from couchbase_columnar.protocol.pycbcc_core import core_error, core_errors
 
-CoreColumnarException: TypeAlias = exception
+CoreError: TypeAlias = core_error
+SdkError: TypeAlias = Union[ColumnarError,
+                            InternalSDKError,
+                            QueryOperationCanceledError,
+                            RuntimeError,
+                            ValueError]
 
 
-class BaseColumnarException(AbstractBaseColumnarException):
-    def __init__(self,
-                 base: Optional[CoreColumnarException] = None,
-                 message: Optional[str] = None,
-                 context: Optional[str] = None,
-                 error_code: Optional[int] = None,
-                 exc_info: Optional[Dict[str, Any]] = None
-                 ) -> None:
-        self._base = base
-        self._context = context
-        self._message = message
-        self._error_code = error_code
-        self._exc_info = exc_info
+class CoreColumnarError(Exception):
+    """
+        **INTERNAL**
+    """
 
-    @property
-    def error_code(self) -> Optional[int]:
-        if self._error_code:
-            return self._error_code
-        if self._base:
-            return self._base.err()
-        return None
+    def __init__(self, core_error: Optional[CoreError] = None) -> None:
+        super().__init__()
+        self._core_error = core_error
 
     @property
-    def error_context(self) -> Optional[str]:
-        # TODO:  need to flesh out bindings to make sure error context is no longer a dict
-        # if not self._context:
-        #     if self._base:
-        #         base_ec = self._base.error_context() or dict()
-        #     else:
-        #         base_ec = dict()
-        #     self._context = ErrorContext.from_dict(**base_ec)
-        return self._context
+    def error_details(self) -> Optional[Dict[str, Any]]:
+        """
+            **INTERNAL**
+        """
+        details = None
+        if self._core_error is not None:
+            details = self._core_error.error_details()
+        return details
 
     @property
-    def inner_cause(self) -> Optional[Exception]:
-        inner_exc: Optional[Exception] = None
-        if self._exc_info is not None:
-            inner_exc = self._exc_info.get('inner_cause', None)
-        return inner_exc
+    def error_properties(self) -> Optional[Dict[str, Union[int, str]]]:
+        """
+            **INTERNAL**
+        """
+        props = None
+        if self.error_details and 'properties' in self.error_details:
+            props = self.error_details['properties']
+        return props
 
-    @property
-    def message(self) -> Optional[str]:
-        if self._message:
-            return self._message
-        if self._base is not None:
-            message = self._base.strerror()
-            if message is not None:
-                return message.replace('_', ' ')
-        return None
+    def __repr__(self) -> str:  # noqa: C901
+        if self.error_details is None:
+            return f"{type(self).__name__}()"
 
-    @staticmethod
-    def create_columnar_exception(base: Optional[CoreColumnarException] = None,
-                                  message: Optional[str] = None,
-                                  context: Optional[str] = None,
-                                  error_code: Optional[int] = None,
-                                  exc_info: Optional[Dict[str, Any]] = None) -> ColumnarException:
-        base_exc = BaseColumnarException(base=base,
-                                         message=message,
-                                         context=context,
-                                         error_code=error_code,
-                                         exc_info=exc_info)
-        return ColumnarException(base=base_exc)
+        details: Dict[str, str] = {}
+        if 'error_code' in self.error_details:
+            details['error_code'] = f'{self.error_details["error_code"]}'
+        if 'inner_cause' in self.error_details:
+            details['inner_cause'] = f'{self.error_details["inner_cause"]}'
+        if 'message' in self.error_details and not is_null_or_empty(self.error_details['message']):
+            details['message'] = f'{self.error_details["message"]}'
+        if 'properties' in self.error_details:
+            if 'code' in self.error_details['properties']:
+                details['properties.code'] = f'{self.error_details["properties"]["code"]}'
+            if 'server_message' in self.error_details['properties']:
+                details['properties.server_message'] = f'{self.error_details["properties"]["server_message"]}'
+        if 'context' in self.error_details:
+            details['context'] = f'{self.error_details["context"]}'
+        if 'file' in self.error_details:
+            details['bindings.file'] = f'{self.error_details["file"]}'
+        if 'line' in self.error_details:
+            details['bindings.line'] = f'{self.error_details["line"]}'
 
-    def __repr__(self) -> str:
-        details = []
-        if self._base:
-            details.append(f"ec={self._base.err()}, category={self._base.err_category()}")
-            if not is_null_or_empty(self._message):
-                details.append(f"message={self._message}")
-            else:
-                details.append(f"message={self._base.strerror()}")
-        else:
-            if not is_null_or_empty(self._message):
-                details.append(f'message={self._message}')
-        if self._context:
-            details.append(f'context={self._context}')
-        if self._exc_info and 'cinfo' in self._exc_info:
-            details.append('C Source={0}:{1}'.format(*self._exc_info['cinfo']))
-        if self._exc_info and 'inner_cause' in self._exc_info:
-            details.append('Inner cause={0}'.format(self._exc_info['inner_cause']))
-        return "<{}>".format(", ".join(details))
+        return f'{details}'
 
     def __str__(self) -> str:
         return self.__repr__()
 
 
 class ExceptionMap(Enum):
-    ColumnarException = 1
-    InvalidCredentialException = 2
-    TimeoutException = 3
-    QueryException = 4
-    InternalSDKException = 5000
-    UnsuccessfulOperationException = 5002
-    QueryOperationCanceledException = 5003
+    ColumnarError = 1
+    InvalidCredentialError = 2
+    TimeoutError = 3
+    QueryError = 4
+    InternalSDKError = 5000
 
 
-PYCBCC_ERROR_MAP: Dict[int, type[ColumnarException]] = {
+PYCBCC_ERROR_MAP: Dict[int, type[ColumnarError]] = {
     e.value: getattr(sys.modules['couchbase_columnar.common.exceptions'], e.name) for e in ExceptionMap
 }
 
 
 class ErrorMapper:
-
-    @staticmethod
-    def _process_mapping(compiled_map: Dict[Pattern[str], type[ColumnarException]],
-                         err_content: str
-                         ) -> Optional[type[ColumnarException]]:
-        matches = None
-        for pattern, exc_class in compiled_map.items():
-            try:
-                matches = pattern.match(err_content)
-            except Exception:  # nosec
-                pass
-            if matches:
-                return exc_class
-
-        return None
-
     @staticmethod  # noqa: C901
-    def _parse_http_response_body(compiled_map: Dict[Pattern[str], type[ColumnarException]],  # noqa: C901
-                                  response_body: str
-                                  ) -> Optional[type[ColumnarException]]:
+    def build_error(core_error: CoreColumnarError,
+                    mapping: Optional[Dict[str, type[ColumnarError]]] = None
+                    ) -> SdkError:
+        err_class: Optional[type[ColumnarError]] = None
+        err_details = core_error.error_details
+        if err_details is not None:
+            # Handle special case to handle when a query is canceled prior to iterating over rows.
+            # The C++ core pending_op callback will return a errc::generic w/
+            # message = "The query operation was canceled".
+            if ('message' in err_details
+               and 'query operation' in err_details['message']
+               and 'canceled' in err_details['message']):
+                return QueryOperationCanceledError(err_details['message'])
+            # Handle C++ core errors
+            elif 'error_code' in err_details:
+                err_code = err_details['error_code']
+                # Handle special case inherited C++ operational auth failure
+                if err_code == 6:
+                    err_code = 2
+                err_class = PYCBCC_ERROR_MAP.get(cast(int, err_code))
+            # Handle errors from the CPython bindings
+            elif 'error_type' in err_details:
+                error_type = cast(int, err_details['error_type'])
+                if error_type == core_errors.VALUE.value:
+                    return ValueError(err_details.get('message'))
+                elif error_type == core_errors.RUNTIME.value:
+                    return RuntimeError(err_details.get('message'))
+                elif error_type == core_errors.INTERNAL_SDK.value:
+                    return InternalSDKError(err_details.get('message'))
 
-        err_text = None
-        try:
-            http_body = json.loads(response_body)
-        except json.decoder.JSONDecodeError:
-            return None
+        if err_class is None:
+            return ColumnarError(base=core_error)
 
-        if isinstance(http_body, str):
-            exc_class = ErrorMapper._process_mapping(compiled_map, http_body)
-            if exc_class is not None:
-                return exc_class
-        elif isinstance(http_body, dict):
-            errors = http_body.get('errors', None)
-            if errors is not None:
-                if isinstance(errors, list):
-                    for err in errors:
-                        err_text = f"{err.get('code', None)} {err.get('msg', None)}"
-                        if err_text:
-                            exc_class = ErrorMapper._process_mapping(compiled_map, err_text)
-                            if exc_class is not None:
-                                return exc_class
-                            err_text = None
-                elif isinstance(errors, dict):
-                    err_text = errors.get('name', None)
-        # eventing function mgmt cases
-        elif isinstance(http_body, dict) and http_body.get('name', None) is not None:
-            name = http_body.get('name', None)
-            if name is not None:
-                exc = ErrorMapper._process_mapping(compiled_map, http_body.get('name', None))
-                if exc is not None:
-                    return exc
-
-        if err_text is not None:
-            exc_class = ErrorMapper._process_mapping(compiled_map, err_text)
-            return exc_class
-
-        return None
-
-    @staticmethod
-    def _parse_http_context(err_ctx: HTTPErrorContext,
-                            mapping: Optional[Dict[str, type[ColumnarException]]] = None,
-                            err_info: Optional[Dict[str, Any]] = None
-                            ) -> Optional[type[ColumnarException]]:
-        from couchbase_columnar.common.core.utils import is_null_or_empty
-
-        compiled_map: Dict[Pattern[str], type[ColumnarException]] = {}
-        if mapping:
-            compiled_map = {{str: re.compile}.get(
-                type(k), lambda x: x)(k): v for k, v in mapping.items()}  # type: ignore[arg-type]
-
-        exc_msg = err_info.get('error_message', None) if err_info else None
-        if not is_null_or_empty(exc_msg):
-            exc_class = ErrorMapper._process_mapping(compiled_map, exc_msg)
-            if exc_class is not None:
-                return exc_class
-
-        if not is_null_or_empty(err_ctx.response_body):
-            err_text = err_ctx.response_body
-            if err_text is not None:
-                exc_class = ErrorMapper._process_mapping(compiled_map, err_text)
-            if exc_class is not None:
-                return exc_class
-
-            if err_text is not None:
-                exc_class = ErrorMapper._parse_http_response_body(compiled_map, err_text)
-            if exc_class is not None:
-                return exc_class
-
-        return None
-
-    @classmethod  # noqa: C901
-    def build_exception(cls,  # noqa: C901
-                        base_exc: CoreColumnarException,
-                        mapping: Optional[Dict[str, type[ColumnarException]]] = None
-                        ) -> ColumnarException:
-        exc_class = None
-        err_ctx = None
-        ctx = base_exc.error_context()
-        if ctx is None:
-            err_info = base_exc.error_info()
-            if (err_info is not None
-                and 'error_msg' in err_info
-                and 'query operation' in err_info['error_msg']
-                    and 'canceled' in err_info['error_msg']):
-                exc_class = PYCBCC_ERROR_MAP.get(ExceptionMap.QueryOperationCanceledException.value)
-            else:
-                exc_class = PYCBCC_ERROR_MAP.get(base_exc.err(), ColumnarException)
-
-        else:
-            err_ctx = ErrorContext.from_dict(**ctx)
-            err_info = base_exc.error_info()
-
-            if isinstance(err_ctx, HTTPErrorContext):
-                exc_class = ErrorMapper._parse_http_context(err_ctx, mapping, err_info=err_info)
-                if exc_class is not None:
-                    base = BaseColumnarException(base=base_exc, exc_info=err_info, context=str(err_ctx))
-                    return exc_class(base=base)
-
-            # if isinstance(err_ctx, QueryErrorContext):
-            #     if mapping is None:
-            #         exc_class = ErrorMapper._parse_http_context(err_ctx, QUERY_ERROR_MAPPING)
-            #         if exc_class is not None:
-            #             base = BaseColumnarException(base=base_exc, exc_info=err_info, context=err_ctx)
-            #             return exc_class(base=base)
-
-        if exc_class is None:
-            if (err_info is not None
-                and 'error_msg' in err_info
-                and 'query operation' in err_info['error_msg']
-                    and 'canceled' in err_info['error_msg']):
-                exc_class = PYCBCC_ERROR_MAP.get(ExceptionMap.QueryOperationCanceledException.value, ColumnarException)
-            else:
-                exc_class = PYCBCC_ERROR_MAP.get(base_exc.err(), ColumnarException)
-
-        base = BaseColumnarException(base=base_exc, exc_info=err_info, context=str(err_ctx))
-        return exc_class(base=base)
+        return err_class(base=core_error)

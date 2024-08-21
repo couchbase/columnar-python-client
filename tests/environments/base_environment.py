@@ -114,6 +114,31 @@ class BlockingTestEnvironment(TestEnvironment):
             count += 1
         assert count >= expected_count
 
+    def create_new_cluster_instance(self,
+                                    connstr: Optional[str] = None,
+                                    credential: Optional[Credential] = None) -> Cluster:
+        if connstr is None:
+            connstr = self.config.get_connection_string()
+        if credential is None:
+            username, pw = self.config.get_username_and_pw()
+            credential = Credential.from_username_and_password(username, pw)
+
+        if self.config.nonprod is True:
+            from couchbase_columnar.common.core._certificates import _Certificates
+            sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
+
+        if self.config.tls_verify is False:
+            if sec_opts is not None:
+                sec_opts['verify_server_certificate'] = False
+            else:
+                sec_opts = SecurityOptions(verify_server_certificate=False)
+
+        if sec_opts is not None:
+            opts = ClusterOptions(security_options=sec_opts)
+            return Cluster.create_instance(connstr, credential, opts)
+        else:
+            return Cluster.create_instance(connstr, credential)
+
     @classmethod
     def get_environment(cls, config: ColumnarConfig) -> BlockingTestEnvironment:
         if config is None:
@@ -197,6 +222,31 @@ class AsyncTestEnvironment(TestEnvironment):
             assert row is not None
             count += 1
         assert count >= expected_count
+
+    def create_new_cluster_instance(self,
+                                    connstr: Optional[str] = None,
+                                    credential: Optional[Credential] = None) -> AsyncCluster:
+        if connstr is None:
+            connstr = self.config.get_connection_string()
+        if credential is None:
+            username, pw = self.config.get_username_and_pw()
+            credential = Credential.from_username_and_password(username, pw)
+
+        if self.config.nonprod is True:
+            from couchbase_columnar.common.core._certificates import _Certificates
+            sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
+
+        if self.config.tls_verify is False:
+            if sec_opts is not None:
+                sec_opts['verify_server_certificate'] = False
+            else:
+                sec_opts = SecurityOptions(verify_server_certificate=False)
+
+        if sec_opts is not None:
+            opts = ClusterOptions(security_options=sec_opts)
+            return AsyncCluster.create_instance(connstr, credential, opts)
+        else:
+            return AsyncCluster.create_instance(connstr, credential)
 
     @classmethod
     def get_environment(cls, config: ColumnarConfig) -> AsyncTestEnvironment:

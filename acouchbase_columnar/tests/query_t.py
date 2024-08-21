@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from acouchbase_columnar.exceptions import QueryException
+from acouchbase_columnar.exceptions import QueryError
 from acouchbase_columnar.options import QueryOptions
 from acouchbase_columnar.result import AsyncQueryResult
 from couchbase_columnar.common.streaming import StreamingState
@@ -211,7 +211,7 @@ class QueryTestSuite:
     @pytest.mark.asyncio
     async def test_query_raises_exception_prior_to_iterating(self, test_env: AsyncTestEnvironment) -> None:
         statement = "I'm not N1QL!"
-        with pytest.raises(QueryException):
+        with pytest.raises(QueryError):
             await test_env.cluster_or_scope.execute_query(statement)
 
     @pytest.mark.asyncio

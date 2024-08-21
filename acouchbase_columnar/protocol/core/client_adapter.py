@@ -31,15 +31,12 @@ else:
 from acouchbase_columnar import get_event_loop
 from couchbase_columnar.common.credential import Credential
 from couchbase_columnar.common.deserializer import Deserializer
-from couchbase_columnar.common.exceptions import ColumnarException, ServiceUnavailableException
+from couchbase_columnar.common.exceptions import ColumnarError, InternalSDKError
 from couchbase_columnar.protocol.connection import _ConnectionDetails
 from couchbase_columnar.protocol.core.client import _CoreClient
 from couchbase_columnar.protocol.core.request import CloseConnectionRequest, ConnectRequest
 from couchbase_columnar.protocol.core.result import CoreResult
-from couchbase_columnar.protocol.exceptions import (PYCBCC_ERROR_MAP,
-                                                    CoreColumnarException,
-                                                    ErrorMapper,
-                                                    ExceptionMap)
+from couchbase_columnar.protocol.exceptions import CoreColumnarError, ErrorMapper
 from couchbase_columnar.protocol.options import OptionsBuilder
 
 ReqT = TypeVar('ReqT', ConnectRequest, CloseConnectionRequest)
@@ -61,18 +58,13 @@ class AsyncWrapper:
             def wrapped_fn(self: _ClientAdapter, req: ReqT) -> Optional[CoreResult]:
                 try:
                     ret = fn(self, req)
-                    if isinstance(ret, CoreColumnarException):
-                        raise ErrorMapper.build_exception(ret)
+                    if isinstance(ret, CoreColumnarError):
+                        raise ErrorMapper.build_error(ret)
                     return ret
-                except ColumnarException as e:
-                    if isinstance(e, ServiceUnavailableException) and fn.__name__ == '_get_cluster_info':
-                        e._message = ('If using Couchbase Server < 6.6, '
-                                      'a bucket needs to be opened prior to cluster level operations')
-                    raise e
+                except ColumnarError as err:
+                    raise err
                 except Exception as ex:
-                    exc_cls = PYCBCC_ERROR_MAP.get(ExceptionMap.InternalSDKException.value, ColumnarException)
-                    excptn = exc_cls(message=str(ex))
-                    raise excptn from None
+                    raise InternalSDKError(str(ex))
 
             return wrapped_fn
         return decorator
@@ -153,8 +145,8 @@ class _ClientAdapter:
             self._client = _CoreClient()
 
         ret = self.client.connect(req)
-        if isinstance(ret, CoreColumnarException):
-            raise ErrorMapper.build_exception(ret)
+        if isinstance(ret, CoreColumnarError):
+            raise ErrorMapper.build_error(ret)
         self._client.connection = ret
 
     def close_connection(self, req: CloseConnectionRequest) -> bool:
@@ -181,5 +173,5 @@ class _ClientAdapter:
 
 
 InputWrappedFn: TypeAlias = Callable[[_ClientAdapter, ReqT],
-                                     Optional[Union[CoreColumnarException, CoreResult]]]
+                                     Optional[Union[CoreColumnarError, CoreResult]]]
 OutputWrappedBlockingFn: TypeAlias = Callable[[_ClientAdapter, ReqT], Optional[CoreResult]]

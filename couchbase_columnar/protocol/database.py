@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 from couchbase_columnar.protocol.core.client_adapter import _ClientAdapter
@@ -42,6 +43,13 @@ class Database:
             str: The name of this :class:`~couchbase_columnar.protocol.database.Database` instance.
         """
         return self._database_name
+
+    @property
+    def threadpool_executor(self) -> ThreadPoolExecutor:
+        """
+            **INTERNAL**
+        """
+        return self._cluster.threadpool_executor
 
     def scope(self, scope_name: str) -> Scope:
         return Scope(self, scope_name)

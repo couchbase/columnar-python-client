@@ -37,7 +37,7 @@ pycbcc_logger__configure_logging_sink__(PyObject* self, PyObject* args, PyObject
   const char* kw_format = "OO";
   if (!PyArg_ParseTupleAndKeywords(
         args, kwargs, kw_format, const_cast<char**>(kw_list), &pyObj_logger, &pyObj_level)) {
-    pycbcc_set_python_exception(PycbccError::InvalidArgument,
+    pycbcc_set_python_exception(CoreErrors::VALUE,
                                 __FILE__,
                                 __LINE__,
                                 "Cannot set pycbcc_logger sink.  Unable to parse args/kwargs.");
@@ -45,12 +45,10 @@ pycbcc_logger__configure_logging_sink__(PyObject* self, PyObject* args, PyObject
   }
 
   if (couchbase::core::logger::is_initialized()) {
-    pycbcc_set_python_exception(PycbccError::UnsuccessfulOperation,
-                                __FILE__,
-                                __LINE__,
-                                "Cannot create logger.  Another logger has already been "
-                                "initialized. Make sure the PYCBCC_LOG_LEVEL env "
-                                "variable is not set if using configure_logging.");
+    PyErr_SetString(PyExc_RuntimeError,
+                    "Cannot create logger.  Another logger has already been "
+                    "initialized. Make sure the PYCBCC_LOG_LEVEL env "
+                    "variable is not set if using configure_logging.");
     return nullptr;
   }
 
@@ -76,7 +74,7 @@ pycbcc_logger__create_console_logger__(PyObject* self, PyObject* args, PyObject*
   const char* kw_format = "s";
   if (!PyArg_ParseTupleAndKeywords(
         args, kwargs, kw_format, const_cast<char**>(kw_list), &log_level)) {
-    pycbcc_set_python_exception(PycbccError::InvalidArgument,
+    pycbcc_set_python_exception(CoreErrors::VALUE,
                                 __FILE__,
                                 __LINE__,
                                 "Cannot set create console logger.  Unable to parse args/kwargs.");
@@ -84,19 +82,16 @@ pycbcc_logger__create_console_logger__(PyObject* self, PyObject* args, PyObject*
   }
 
   if (couchbase::core::logger::is_initialized()) {
-    pycbcc_set_python_exception(
-      PycbccError::UnsuccessfulOperation,
-      __FILE__,
-      __LINE__,
-      "Cannot create console logger.  Another logger has already been initialized.");
+    PyErr_SetString(PyExc_RuntimeError,
+                    "Cannot create logger.  Another logger has already been "
+                    "initialized. Make sure to not use configure_logging if "
+                    "going to set PYCBCC_LOG_LEVEL env.");
     return nullptr;
   }
 
   if (log_level == nullptr) {
-    pycbcc_set_python_exception(PycbccError::InvalidArgument,
-                                __FILE__,
-                                __LINE__,
-                                "Cannot create console logger.  Unable to determine log level.");
+    PyErr_SetString(PyExc_RuntimeError,
+                    "Cannot create console logger.  Unable to determine log level.");
     return nullptr;
   }
   couchbase::core::logger::create_console_logger();
@@ -114,7 +109,7 @@ pycbcc_logger__enable_protocol_logger__(PyObject* self, PyObject* args, PyObject
   const char* kw_format = "s";
   if (!PyArg_ParseTupleAndKeywords(
         args, kwargs, kw_format, const_cast<char**>(kw_list), &filename)) {
-    pycbcc_set_python_exception(PycbccError::InvalidArgument,
+    pycbcc_set_python_exception(CoreErrors::VALUE,
                                 __FILE__,
                                 __LINE__,
                                 "Cannot enable the protocol logger.  Unable to parse args/kwargs.");

@@ -19,19 +19,15 @@ from asyncio import Future
 from threading import Event
 from typing import (TYPE_CHECKING,
                     Any,
-                    NoReturn,
                     Optional,
                     Union)
 
-from couchbase_columnar.common.exceptions import ColumnarException
+from couchbase_columnar.common.exceptions import ColumnarError, InternalSDKError
 from couchbase_columnar.common.query import QueryMetadata
 from couchbase_columnar.common.result import AsyncQueryResult
 from couchbase_columnar.common.streaming import StreamingExecutor, StreamingState
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
-from couchbase_columnar.protocol.exceptions import (PYCBCC_ERROR_MAP,
-                                                    CoreColumnarException,
-                                                    ErrorMapper,
-                                                    ExceptionMap)
+from couchbase_columnar.protocol.exceptions import CoreColumnarError, ErrorMapper
 
 if TYPE_CHECKING:
     from asyncio import AbstractEventLoop
@@ -90,7 +86,6 @@ class _AsyncQueryStreamingExecutor(StreamingExecutor):
         if self._query_iter is None:
             return
         self._query_iter.cancel()
-        print('cancelled request')
         self._streaming_state = StreamingState.Cancelled
 
     def get_metadata(self) -> QueryMetadata:
@@ -101,44 +96,37 @@ class _AsyncQueryStreamingExecutor(StreamingExecutor):
                 raise RuntimeError('Query metadata is only available after all rows have been iterated.')
         return self._metadata
 
-    def handle_exception(self, ex: Exception) -> NoReturn:
-        exc_cls = PYCBCC_ERROR_MAP.get(ExceptionMap.InternalSDKException.value, ColumnarException)
-        excptn = exc_cls(message=str(ex))
-        raise excptn
-
     def set_metadata(self) -> None:
         if self._query_iter is None:
             return
 
         try:
             query_metadata = self._query_iter.metadata()
-        except ColumnarException as ex:
-            raise ex
+        except ColumnarError as err:
+            raise err
         except Exception as ex:
-            exc_cls = PYCBCC_ERROR_MAP.get(ExceptionMap.InternalSDKException.value, ColumnarException)
-            excptn = exc_cls(message=str(ex))
-            raise excptn
+            raise InternalSDKError(str(ex))
 
-        if isinstance(query_metadata, CoreColumnarException):
-            raise ErrorMapper.build_exception(query_metadata)
+        if isinstance(query_metadata, CoreColumnarError):
+            raise ErrorMapper.build_error(query_metadata)
         if query_metadata is None:
             return
         self._metadata = QueryMetadata(query_metadata)
 
     def submit_query(self) -> Future[AsyncQueryResult]:
         if not StreamingState.okay_to_stream(self._streaming_state):
-            raise StreamingState.get_streaming_exception(self._streaming_state)
+            raise RuntimeError('Query has been canceled or previously executed.')
 
         self._streaming_state = StreamingState.Started
-        query_iter = self._client.columnar_query_op(self._request,
-                                                    callback=self._set_query_core_result,
-                                                    row_callback=self._row_callback)
-
-        if not isinstance(query_iter, CoreQueryIterator):
-            # TODO:  better exception
-            raise ValueError('Columnar query op unsuccessful.')
-
-        self._query_iter = query_iter
+        try:
+            self._query_iter = self._client.columnar_query_op(self._request,
+                                                              callback=self._set_query_core_result,
+                                                              row_callback=self._row_callback)
+        except Exception as ex:
+            # suppress context, we know we have raised an error from the bindings
+            if isinstance(ex, CoreColumnarError):
+                raise ErrorMapper.build_error(ex) from None
+            raise InternalSDKError(str(ex)) from None
 
         self._iter_ft: Future[AsyncQueryResult] = self._loop.create_future()
         return self._iter_ft
@@ -146,19 +134,19 @@ class _AsyncQueryStreamingExecutor(StreamingExecutor):
     async def get_next_row(self) -> Any:
         return await self._get_next_row()
 
-    def _set_query_core_result(self, res:  Union[bool, ColumnarException]) -> None:
+    def _set_query_core_result(self, res:  Union[bool, ColumnarError]) -> None:
         if self._iter_ft.cancelled():
             return
 
-        if isinstance(res, CoreColumnarException):
-            exc = ErrorMapper.build_exception(res)
+        if isinstance(res, CoreColumnarError):
+            exc = ErrorMapper.build_error(res)
             self._loop.call_soon_threadsafe(self._iter_ft.set_exception, exc)
         else:
             self._loop.call_soon_threadsafe(self._iter_ft.set_result, AsyncQueryResult(self))
 
     def _row_callback(self, row: Any) -> None:
-        if isinstance(row, CoreColumnarException):
-            exc = ErrorMapper.build_exception(row)
+        if isinstance(row, CoreColumnarError):
+            exc = ErrorMapper.build_error(row)
             self._loop.call_soon_threadsafe(self._row_ft.set_exception, exc)
         else:
             self._loop.call_soon_threadsafe(self._row_ft.set_result, row)

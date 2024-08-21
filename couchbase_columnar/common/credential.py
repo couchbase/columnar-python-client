@@ -17,8 +17,6 @@ from __future__ import annotations
 
 from typing import Callable, Dict
 
-from couchbase_columnar.common.exceptions import InvalidArgumentException
-
 
 class Credential:
     def __init__(self, **kwargs: str) -> None:
@@ -26,14 +24,14 @@ class Credential:
         password = kwargs.pop('password', None)
 
         if username is None:
-            raise InvalidArgumentException('Must provide a username.')
+            raise ValueError('Must provide a username.')
         if not isinstance(username, str):
-            raise InvalidArgumentException('The username must be a str.')
+            raise ValueError('The username must be a str.')
 
         if password is None:
-            raise InvalidArgumentException('Must provide a password.')
+            raise ValueError('Must provide a password.')
         if not isinstance(password, str):
-            raise InvalidArgumentException('The password must be a str.')
+            raise ValueError('The password must be a str.')
 
         self._username = username
         self._password = password

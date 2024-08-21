@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import atexit
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import (TYPE_CHECKING,
                     Optional,
@@ -43,6 +44,8 @@ class Cluster:
         # Allow the default max_workers which is (as of Python 3.8): min(32, os.cpu_count() + 4).
         # We can add an option later if we see a need
         self._tp_executor = ThreadPoolExecutor()
+        self._tp_executor_shutdown_called = False
+        atexit.register(self._shutdown_executor)
 
     @property
     def client_adapter(self) -> _ClientAdapter:
@@ -58,6 +61,13 @@ class Cluster:
         """
         return self._client_adapter.has_connection
 
+    @property
+    def threadpool_executor(self) -> ThreadPoolExecutor:
+        """
+            **INTERNAL**
+        """
+        return self._tp_executor
+
     def _close(self) -> None:
         """
             **INTERNAL**
@@ -65,6 +75,8 @@ class Cluster:
         req = self._request_builder.build_close_connection_request()
         self._client_adapter.close_connection(req)
         self._client_adapter.reset_client()
+        if self._tp_executor_shutdown_called is False:
+            self._tp_executor.shutdown()
 
     def _connect(self) -> None:
         """
@@ -72,6 +84,11 @@ class Cluster:
         """
         req = self._request_builder.build_connection_request()
         self._client_adapter.connect(req)
+
+    def _shutdown_executor(self) -> None:
+        if self._tp_executor_shutdown_called is False:
+            self._tp_executor.shutdown()
+        self._tp_executor_shutdown_called = True
 
     def close(self) -> None:
         """Shuts down this cluster instance. Cleaning up all resources associated with it.
@@ -106,10 +123,11 @@ class Cluster:
                                            cancel_token=cancel_token,
                                            lazy_execute=lazy_execute)
         if executor.cancel_token is not None:
-            # TODO:  warning or exception?  lazy is only available for the non-cancellable path
-            # if lazy_execute is not None:
-            #     raise Exception()
-            ft = self._tp_executor.submit(self._execute_query_in_background, executor)
+            executor.set_threadpool_executor(self.threadpool_executor)
+            if lazy_execute is True:
+                raise RuntimeError(('Cannot cancel, via cancel token, a query that is executed lazily.'
+                                    ' Queries executed lazily can be cancelled only after iteration begins.'))
+            ft = self.threadpool_executor.submit(self._execute_query_in_background, executor)
             return ft
         else:
             if executor.lazy_execute is not True:

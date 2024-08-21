@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import overload
 
 from typing_extensions import Unpack
@@ -56,6 +56,9 @@ class Cluster:
 
     @property
     def connected(self) -> bool: ...
+
+    @property
+    def threadpool_executor(self) -> ThreadPoolExecutor: ...
 
     def close(self) -> None: ...
 

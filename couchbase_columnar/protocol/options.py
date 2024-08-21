@@ -45,7 +45,6 @@ from couchbase_columnar.common.core.utils import (VALIDATE_BOOL,
                                                   validate_raw_dict)
 from couchbase_columnar.common.deserializer import Deserializer
 from couchbase_columnar.common.enums import IpProtocol, QueryScanConsistency
-from couchbase_columnar.common.exceptions import InvalidArgumentException
 from couchbase_columnar.common.options import (ClusterOptions,
                                                OptionsClass,
                                                QueryOptions,
@@ -278,7 +277,7 @@ class OptionsBuilder:
         elif option_type == 'QueryOptions':
             return QueryOptions.VALID_OPTION_KEYS, QUERY_OPTIONS_TRANSFORMS
         else:
-            raise InvalidArgumentException('Invalid OptionType.')
+            raise ValueError('Invalid OptionType.')
 
     def build_cluster_options(self,  # noqa: C901
                               option_type: type[OptionsClass],

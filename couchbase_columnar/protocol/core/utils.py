@@ -17,19 +17,17 @@
 from datetime import timedelta
 from time import time
 
-from couchbase_columnar.common.exceptions import InvalidArgumentException
-
 THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60
 
 
 def timedelta_as_timestamp(duration: timedelta) -> int:
     if not isinstance(duration, timedelta):
-        raise InvalidArgumentException(f'Expected timedelta instead of {duration}')
+        raise ValueError(f'Expected timedelta instead of {duration}')
 
     # PYCBC-1177 remove deprecated heuristic from PYCBC-948:
     seconds = int(duration.total_seconds())
     if seconds < 0:
-        raise InvalidArgumentException(f'Expected expiry seconds of zero (for no expiry) or greater, got {seconds}.')
+        raise ValueError(f'Expected expiry seconds of zero (for no expiry) or greater, got {seconds}.')
 
     if seconds < THIRTY_DAYS_IN_SECONDS:
         return seconds

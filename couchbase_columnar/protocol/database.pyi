@@ -13,6 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from concurrent.futures import ThreadPoolExecutor
+
 from couchbase_columnar.protocol.cluster import Cluster as Cluster
 from couchbase_columnar.protocol.core.client_adapter import _ClientAdapter
 from couchbase_columnar.protocol.scope import Scope
@@ -25,5 +27,8 @@ class Database:
 
     @property
     def name(self) -> str: ...
+
+    @property
+    def threadpool_executor(self) -> ThreadPoolExecutor: ...
 
     def scope(self, scope_name: str) -> Scope: ...
