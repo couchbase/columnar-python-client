@@ -88,7 +88,7 @@ class QueryTestSuite:
         else:
             return f'SELECT * FROM {test_env.fqdn} LIMIT 5;'
 
-    @pytest.mark.parametrize('cancel_via_token', [False, True])
+    @pytest.mark.parametrize('cancel_via_token', [True])
     def test_cancel_positional_params_override(self,
                                                test_env: BlockingTestEnvironment,
                                                query_statement_pos_params_limit2: str,

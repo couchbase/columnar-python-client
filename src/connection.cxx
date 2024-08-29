@@ -119,7 +119,7 @@ close_connection_callback(PyObject* pyObj_conn,
       Py_DECREF(pyObj_callback_res);
     } else {
       pycbcc_set_python_exception(
-        CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Close connection callback failed.");
+        CoreClientErrors::INTERNAL_SDK, __FILE__, __LINE__, "Close connection callback failed.");
     }
     Py_DECREF(pyObj_args);
     Py_XDECREF(pyObj_callback);
@@ -439,7 +439,7 @@ handle_create_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObje
 
   if (!ret) {
     std::string msg = "Cannot create connection. Unable to parse args/kwargs.";
-    pycbcc_set_python_exception(CoreErrors::VALUE, __FILE__, __LINE__, msg.c_str());
+    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, msg.c_str());
     return nullptr;
   }
 
@@ -449,7 +449,7 @@ handle_create_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObje
   try {
     update_cluster_options(connection_str.options, pyObj_options);
   } catch (const std::invalid_argument& e) {
-    pycbcc_set_python_exception(CoreErrors::VALUE, __FILE__, __LINE__, e.what());
+    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, e.what());
     return nullptr;
   } catch (const std::exception& e) {
     PyErr_SetString(PyExc_Exception, e.what());
@@ -466,7 +466,7 @@ handle_create_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObje
   PyObject* pyObj_conn = PyCapsule_New(conn, "conn_", dealloc_conn);
 
   if (pyObj_conn == nullptr) {
-    pycbcc_set_python_exception(CoreErrors::INTERNAL_SDK,
+    pycbcc_set_python_exception(CoreClientErrors::INTERNAL_SDK,
                                 __FILE__,
                                 __LINE__,
                                 "Cannot create connection. Unable to create PyCapsule.");
@@ -501,13 +501,13 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
 
   if (!ret) {
     std::string msg = "Cannot get connection options. Unable to parse args/kwargs.";
-    pycbcc_set_python_exception(CoreErrors::VALUE, __FILE__, __LINE__, msg.c_str());
+    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, msg.c_str());
     return nullptr;
   }
 
   connection* conn = reinterpret_cast<connection*>(PyCapsule_GetPointer(pyObj_conn, "conn_"));
   if (nullptr == conn) {
-    pycbcc_set_python_exception(CoreErrors::VALUE, __FILE__, __LINE__, NULL_CONN_OBJECT);
+    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, NULL_CONN_OBJECT);
     return nullptr;
   }
 
@@ -723,13 +723,13 @@ handle_close_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObjec
 
   if (!ret) {
     std::string msg = "Cannot close connection. Unable to parse args/kwargs.";
-    pycbcc_set_python_exception(CoreErrors::VALUE, __FILE__, __LINE__, msg.c_str());
+    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, msg.c_str());
     return nullptr;
   }
 
   connection* conn = reinterpret_cast<connection*>(PyCapsule_GetPointer(pyObj_conn, "conn_"));
   if (nullptr == conn) {
-    pycbcc_set_python_exception(CoreErrors::VALUE, __FILE__, __LINE__, NULL_CONN_OBJECT);
+    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, NULL_CONN_OBJECT);
     return nullptr;
   }
 

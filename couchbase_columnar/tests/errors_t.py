@@ -72,7 +72,7 @@ class ErrorTestSuite:
         assert isinstance(caught_err._base, CoreColumnarError)
         err_details = caught_err._base.error_details
         assert isinstance(err_details, dict)
-        assert 'error_code' in err_details
+        assert 'core_error_code' in err_details
         assert 'message' in err_details
         assert 'properties' in err_details
         assert 'code' in err_details['properties']

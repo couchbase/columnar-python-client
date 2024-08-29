@@ -37,7 +37,7 @@ pycbcc_logger__configure_logging_sink__(PyObject* self, PyObject* args, PyObject
   const char* kw_format = "OO";
   if (!PyArg_ParseTupleAndKeywords(
         args, kwargs, kw_format, const_cast<char**>(kw_list), &pyObj_logger, &pyObj_level)) {
-    pycbcc_set_python_exception(CoreErrors::VALUE,
+    pycbcc_set_python_exception(CoreClientErrors::VALUE,
                                 __FILE__,
                                 __LINE__,
                                 "Cannot set pycbcc_logger sink.  Unable to parse args/kwargs.");
@@ -74,7 +74,7 @@ pycbcc_logger__create_console_logger__(PyObject* self, PyObject* args, PyObject*
   const char* kw_format = "s";
   if (!PyArg_ParseTupleAndKeywords(
         args, kwargs, kw_format, const_cast<char**>(kw_list), &log_level)) {
-    pycbcc_set_python_exception(CoreErrors::VALUE,
+    pycbcc_set_python_exception(CoreClientErrors::VALUE,
                                 __FILE__,
                                 __LINE__,
                                 "Cannot set create console logger.  Unable to parse args/kwargs.");
@@ -109,7 +109,7 @@ pycbcc_logger__enable_protocol_logger__(PyObject* self, PyObject* args, PyObject
   const char* kw_format = "s";
   if (!PyArg_ParseTupleAndKeywords(
         args, kwargs, kw_format, const_cast<char**>(kw_list), &filename)) {
-    pycbcc_set_python_exception(CoreErrors::VALUE,
+    pycbcc_set_python_exception(CoreClientErrors::VALUE,
                                 __FILE__,
                                 __LINE__,
                                 "Cannot enable the protocol logger.  Unable to parse args/kwargs.");
