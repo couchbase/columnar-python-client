@@ -78,7 +78,7 @@ create_columnar_response(couchbase::core::columnar::query_result resp,
       Py_DECREF(pyObj_callback_res);
     } else {
       pycbcc_set_python_exception(
-        CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Columnar query callback failed.");
+        CoreClientErrors::INTERNAL_SDK, __FILE__, __LINE__, "Columnar query callback failed.");
     }
     Py_DECREF(pyObj_args);
     Py_XDECREF(pyObj_callback);

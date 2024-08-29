@@ -56,8 +56,8 @@ add_core_enums(PyObject* pyObj_module)
     return;
   }
 
-  pyObj_enum_values = PyUnicode_FromString(CoreErrors::ALL_CORE_ERRORS());
-  pyObj_enum_name = PyUnicode_FromString("CoreErrors");
+  pyObj_enum_values = PyUnicode_FromString(CoreClientErrors::ALL_CORE_CLIENT_ERROR_CODES());
+  pyObj_enum_name = PyUnicode_FromString("CoreClientErrorCode");
   // PyTuple_Pack returns new reference, need to Py_DECREF values provided
   pyObj_args = PyTuple_Pack(2, pyObj_enum_name, pyObj_enum_values);
   Py_DECREF(pyObj_enum_name);
@@ -70,7 +70,7 @@ add_core_enums(PyObject* pyObj_module)
   Py_DECREF(pyObj_args);
   Py_DECREF(pyObj_kwargs);
 
-  if (PyModule_AddObject(pyObj_module, "core_errors", pyObj_operations) < 0) {
+  if (PyModule_AddObject(pyObj_module, "core_client_error_code", pyObj_operations) < 0) {
     // only need to Py_DECREF on failure to add when using PyModule_AddObject()
     Py_XDECREF(pyObj_operations);
     return;
@@ -116,8 +116,10 @@ columnar_query(PyObject* self, PyObject* args, PyObject* kwargs)
 {
   PyObject* res = handle_columnar_query(self, args, kwargs);
   if (res == nullptr && PyErr_Occurred() == nullptr) {
-    pycbcc_set_python_exception(
-      CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to perform Columnar query operation.");
+    pycbcc_set_python_exception(CoreClientErrors::INTERNAL_SDK,
+                                __FILE__,
+                                __LINE__,
+                                "Unable to perform Columnar query operation.");
   }
   return res;
 }
@@ -128,7 +130,7 @@ create_connection(PyObject* self, PyObject* args, PyObject* kwargs)
   PyObject* res = handle_create_connection(self, args, kwargs);
   if (res == nullptr && PyErr_Occurred() == nullptr) {
     pycbcc_set_python_exception(
-      CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to create connection.");
+      CoreClientErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to create connection.");
   }
   return res;
 }
@@ -139,7 +141,7 @@ get_connection_information(PyObject* self, PyObject* args, PyObject* kwargs)
   PyObject* res = get_connection_info(self, args, kwargs);
   if (res == nullptr && PyErr_Occurred() == nullptr) {
     pycbcc_set_python_exception(
-      CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to get connection information.");
+      CoreClientErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to get connection information.");
   }
   return res;
 }
@@ -156,7 +158,7 @@ close_connection(PyObject* self, PyObject* args, PyObject* kwargs)
   PyObject* res = handle_close_connection(self, args, kwargs);
   if (res == nullptr && PyErr_Occurred() != nullptr) {
     pycbcc_set_python_exception(
-      CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to close connection.");
+      CoreClientErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to close connection.");
   }
   return res;
 }

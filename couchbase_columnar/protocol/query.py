@@ -28,9 +28,9 @@ from couchbase_columnar.common.exceptions import (ColumnarError,
 from couchbase_columnar.common.query import CancelToken, QueryMetadata
 from couchbase_columnar.common.streaming import StreamingExecutor, StreamingState
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
-from couchbase_columnar.protocol.exceptions import (CoreColumnarError,
-                                                    ErrorMapper,
-                                                    SdkError)
+from couchbase_columnar.protocol.exceptions import (ClientError,
+                                                    CoreColumnarError,
+                                                    ErrorMapper)
 
 if TYPE_CHECKING:
     from couchbase_columnar.protocol.core.client import _CoreClient
@@ -59,7 +59,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
         self._cancel_token: Optional[CancelToken] = cancel_token
         self._query_iter: CoreQueryIterator
         self._tp_executor: ThreadPoolExecutor
-        self._query_res_ft: Future[Union[bool, SdkError]]
+        self._query_res_ft: Future[Union[bool, Union[ColumnarError, ClientError]]]
 
     @property
     def cancel_token(self) -> Optional[Event]:
@@ -142,7 +142,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
         """
         self._tp_executor = tp_executor
 
-    def _get_core_query_result(self) -> Union[bool, SdkError]:
+    def _get_core_query_result(self) -> Union[bool, Union[ColumnarError, ClientError]]:
         """
             **INTERNAL**
         """

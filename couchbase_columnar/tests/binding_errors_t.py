@@ -25,10 +25,10 @@ from couchbase_columnar.exceptions import (ColumnarError,
                                            QueryError,
                                            TimeoutError)
 from couchbase_columnar.protocol.exceptions import CoreColumnarError, ErrorMapper
-from couchbase_columnar.protocol.pycbcc_core import _test_exception_builder, core_errors
+from couchbase_columnar.protocol.pycbcc_core import _test_exception_builder, core_client_error_code
 
 
-class CppCoreErrorCodes(IntEnum):
+class CppCoreErrorCode(IntEnum):
     GENERIC = 1
     INVALID_CREDENTIAL = 2
     TIMEOUT = 3
@@ -37,54 +37,58 @@ class CppCoreErrorCodes(IntEnum):
 
 class BindingErrorTestSuite:
     TEST_MANIFEST = [
-        'test_binding_error_cpp',
-        'test_binding_error_non_cpp',
+        'test_binding_core_error',
+        'test_binding_client_error',
         'test_binding_error_non_cpp_with_inner',
     ]
 
-    @pytest.mark.parametrize('error_type, expected_err',
-                             [(CppCoreErrorCodes.GENERIC, ColumnarError),
-                              (CppCoreErrorCodes.INVALID_CREDENTIAL, InvalidCredentialError),
-                              (CppCoreErrorCodes.TIMEOUT, TimeoutError),
-                              (CppCoreErrorCodes.QUERY_ERROR, QueryError)])
-    def test_binding_error_cpp(self, error_type: CppCoreErrorCodes, expected_err: type[Exception]) -> None:
-        err = _test_exception_builder(error_type.value, True)
+    @pytest.mark.parametrize('core_error_code, expected_err',
+                             [(CppCoreErrorCode.GENERIC, ColumnarError),
+                              (CppCoreErrorCode.INVALID_CREDENTIAL, InvalidCredentialError),
+                              (CppCoreErrorCode.TIMEOUT, TimeoutError),
+                              (CppCoreErrorCode.QUERY_ERROR, QueryError)])
+    def test_binding_core_error(self, core_error_code: CppCoreErrorCode, expected_err: type[Exception]) -> None:
+        err = _test_exception_builder(core_error_code.value, True)
         assert isinstance(err, CoreColumnarError)
         assert err.error_details is not None
         assert isinstance(err.error_details, dict)
-        error_code = err.error_details.get('error_code', None)
+        error_code = err.error_details.get('core_error_code', None)
         assert error_code is not None
-        assert error_code == error_type.value
+        assert error_code == core_error_code.value
         built_err = ErrorMapper.build_error(err)
         assert isinstance(built_err, expected_err)
 
-    @pytest.mark.parametrize('error_type, expected_err',
-                             [(core_errors.VALUE, ValueError),
-                              (core_errors.RUNTIME, RuntimeError),
-                              (core_errors.INTERNAL_SDK, InternalSDKError)])
-    def test_binding_error_non_cpp(self, error_type: core_errors, expected_err: type[Exception]) -> None:
-        err = _test_exception_builder(error_type.value)
+    @pytest.mark.parametrize('client_error_code, expected_err',
+                             [(core_client_error_code.VALUE, ValueError),
+                              (core_client_error_code.RUNTIME, RuntimeError),
+                              (core_client_error_code.INTERNAL_SDK, InternalSDKError)])
+    def test_binding_client_error(self,
+                                  client_error_code: core_client_error_code,
+                                  expected_err: type[Exception]) -> None:
+        err = _test_exception_builder(client_error_code.value)
         assert isinstance(err, CoreColumnarError)
         assert err.error_details is not None
         assert isinstance(err.error_details, dict)
-        err_type = err.error_details.get('error_type', None)
-        assert err_type is not None
-        assert err_type == error_type.value
+        error_code = err.error_details.get('client_error_code', None)
+        assert error_code is not None
+        assert error_code == client_error_code.value
         built_err = ErrorMapper.build_error(err)
         assert isinstance(built_err, expected_err)
 
-    @pytest.mark.parametrize('error_type, expected_err',
-                             [(core_errors.VALUE, ValueError),
-                              (core_errors.RUNTIME, RuntimeError),
-                              (core_errors.INTERNAL_SDK, InternalSDKError)])
-    def test_binding_error_non_cpp_with_inner(self, error_type: core_errors, expected_err: type[Exception]) -> None:
-        err = _test_exception_builder(error_type.value, False, True)
+    @pytest.mark.parametrize('client_error_code, expected_err',
+                             [(core_client_error_code.VALUE, ValueError),
+                              (core_client_error_code.RUNTIME, RuntimeError),
+                              (core_client_error_code.INTERNAL_SDK, InternalSDKError)])
+    def test_binding_error_non_cpp_with_inner(self,
+                                              client_error_code: core_client_error_code,
+                                              expected_err: type[Exception]) -> None:
+        err = _test_exception_builder(client_error_code.value, False, True)
         assert isinstance(err, CoreColumnarError)
         assert err.error_details is not None
         assert isinstance(err.error_details, dict)
-        err_type = err.error_details.get('error_type', None)
-        assert err_type is not None
-        assert err_type == error_type.value
+        error_code = err.error_details.get('client_error_code', None)
+        assert error_code is not None
+        assert error_code == client_error_code.value
         inner_cause = err.error_details.get('inner_cause', None)
         assert inner_cause is not None
         assert isinstance(inner_cause, RuntimeError)

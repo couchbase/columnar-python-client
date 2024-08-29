@@ -32,14 +32,13 @@ from couchbase_columnar.common.core.utils import is_null_or_empty
 from couchbase_columnar.common.exceptions import (ColumnarError,
                                                   InternalSDKError,
                                                   QueryOperationCanceledError)
-from couchbase_columnar.protocol.pycbcc_core import core_error, core_errors
+from couchbase_columnar.protocol.pycbcc_core import core_error
 
 CoreError: TypeAlias = core_error
-SdkError: TypeAlias = Union[ColumnarError,
-                            InternalSDKError,
-                            QueryOperationCanceledError,
-                            RuntimeError,
-                            ValueError]
+ClientError: TypeAlias = Union[InternalSDKError,
+                               QueryOperationCanceledError,
+                               RuntimeError,
+                               ValueError]
 
 
 class CoreColumnarError(Exception):
@@ -100,16 +99,29 @@ class CoreColumnarError(Exception):
         return self.__repr__()
 
 
-class ExceptionMap(Enum):
+class CoreErrorMap(Enum):
     ColumnarError = 1
     InvalidCredentialError = 2
     TimeoutError = 3
     QueryError = 4
-    InternalSDKError = 5000
 
 
-PYCBCC_ERROR_MAP: Dict[int, type[ColumnarError]] = {
-    e.value: getattr(sys.modules['couchbase_columnar.common.exceptions'], e.name) for e in ExceptionMap
+class ClientErrorMap(Enum):
+    ValueError = 1
+    RuntimeError = 2
+    QueryOperationCanceledError = 3
+    InternalSDKError = 4
+
+
+PYCBCC_CORE_ERROR_MAP: Dict[int, type[ColumnarError]] = {
+    e.value: getattr(sys.modules['couchbase_columnar.common.exceptions'], e.name) for e in CoreErrorMap
+}
+
+PYCBCC_CLIENT_ERROR_MAP: Dict[int, type[ClientError]] = {
+    1: ValueError,
+    2: RuntimeError,
+    3: QueryOperationCanceledError,
+    4: InternalSDKError
 }
 
 
@@ -117,33 +129,25 @@ class ErrorMapper:
     @staticmethod  # noqa: C901
     def build_error(core_error: CoreColumnarError,
                     mapping: Optional[Dict[str, type[ColumnarError]]] = None
-                    ) -> SdkError:
+                    ) -> Union[ColumnarError, ClientError]:
         err_class: Optional[type[ColumnarError]] = None
         err_details = core_error.error_details
         if err_details is not None:
-            # Handle special case to handle when a query is canceled prior to iterating over rows.
-            # The C++ core pending_op callback will return a errc::generic w/
-            # message = "The query operation was canceled".
-            if ('message' in err_details
-               and 'query operation' in err_details['message']
-               and 'canceled' in err_details['message']):
-                return QueryOperationCanceledError(err_details['message'])
+            # Handle client errors from the CPython bindings
+            if 'client_error_code' in err_details:
+                err_code = err_details['client_error_code']
+                client_err_class = PYCBCC_CLIENT_ERROR_MAP.get(cast(int, err_code))
+                if client_err_class is None:
+                    return InternalSDKError(f'Unable to match error to client_error_code={err_code}')
+                return client_err_class(err_details.get('message'))
+
             # Handle C++ core errors
-            elif 'error_code' in err_details:
-                err_code = err_details['error_code']
+            if 'core_error_code' in err_details:
+                err_code = err_details['core_error_code']
                 # Handle special case inherited C++ operational auth failure
                 if err_code == 6:
                     err_code = 2
-                err_class = PYCBCC_ERROR_MAP.get(cast(int, err_code))
-            # Handle errors from the CPython bindings
-            elif 'error_type' in err_details:
-                error_type = cast(int, err_details['error_type'])
-                if error_type == core_errors.VALUE.value:
-                    return ValueError(err_details.get('message'))
-                elif error_type == core_errors.RUNTIME.value:
-                    return RuntimeError(err_details.get('message'))
-                elif error_type == core_errors.INTERNAL_SDK.value:
-                    return InternalSDKError(err_details.get('message'))
+                err_class = PYCBCC_CORE_ERROR_MAP.get(cast(int, err_code))
 
         if err_class is None:
             return ColumnarError(base=core_error)

@@ -351,8 +351,10 @@ get_next_row(columnar_query_result_variant result,
     if (pyObj_callback_res) {
       Py_DECREF(pyObj_callback_res);
     } else {
-      pycbcc_set_python_exception(
-        CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Columnar query next row callback failed.");
+      pycbcc_set_python_exception(CoreClientErrors::INTERNAL_SDK,
+                                  __FILE__,
+                                  __LINE__,
+                                  "Columnar query next row callback failed.");
     }
     Py_DECREF(pyObj_args);
   }
@@ -384,7 +386,7 @@ columnar_query_iterator_iternext(PyObject* self)
       if (result == nullptr)
     {
       PyObject* pyObj_exc = pycbcc_build_exception(
-        CoreErrors::INTERNAL_SDK, __FILE__, __LINE__, "Error retrieving next query row.");
+        CoreClientErrors::INTERNAL_SDK, __FILE__, __LINE__, "Error retrieving next query row.");
       return pyObj_exc;
     }
     return result;

@@ -25,10 +25,11 @@ from couchbase_columnar.protocol.exceptions import CoreColumnarError
 
 CXXCBC_METADATA: str
 
-class core_errors(IntEnum):
+class core_client_error_code(IntEnum):
     VALUE = 1
     RUNTIME = 2
-    INTERNAL_SDK = 3
+    CANCELED = 3
+    INTERNAL_SDK = 4
 
 class core_error:
     @classmethod

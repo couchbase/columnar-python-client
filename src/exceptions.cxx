@@ -132,16 +132,53 @@ PyObject*
 pycbcc_build_error_details(couchbase::core::columnar::error err, const char* file, int line)
 {
   PyObject* pyObj_error_details = PyDict_New();
-  PyObject* pyObj_err_ec = PyLong_FromLong(err.ec.value());
-  if (-1 == PyDict_SetItemString(pyObj_error_details, "error_code", pyObj_err_ec)) {
-    PyErr_Clear();
-    Py_DECREF(pyObj_error_details);
+
+  if (err.ec == couchbase::core::columnar::client_errc::canceled) {
+    PyObject* pyObj_err_ec = PyLong_FromLong(static_cast<long>(CoreClientErrors::CANCELED));
+    if (-1 == PyDict_SetItemString(pyObj_error_details, "client_error_code", pyObj_err_ec)) {
+      PyErr_Clear();
+      Py_DECREF(pyObj_error_details);
+      Py_DECREF(pyObj_err_ec);
+      PyErr_SetString(PyExc_RuntimeError,
+                      "Unable to add columnar::error::error_code to error_details.");
+      return nullptr;
+    }
     Py_DECREF(pyObj_err_ec);
-    PyErr_SetString(PyExc_RuntimeError,
-                    "Unable to add columnar::error::error_code to error_details.");
-    return nullptr;
+  } else if (err.ec == couchbase::core::columnar::client_errc::cluster_closed) {
+    // TODO:  should we have another internal error for easier parsing on the Python side?
+    PyObject* pyObj_err_ec = PyLong_FromLong(static_cast<long>(CoreClientErrors::RUNTIME));
+    if (-1 == PyDict_SetItemString(pyObj_error_details, "client_error_code", pyObj_err_ec)) {
+      PyErr_Clear();
+      Py_DECREF(pyObj_error_details);
+      Py_DECREF(pyObj_err_ec);
+      PyErr_SetString(PyExc_RuntimeError,
+                      "Unable to add columnar::error::error_code to error_details.");
+      return nullptr;
+    }
+    Py_DECREF(pyObj_err_ec);
+  } else if (err.ec == couchbase::core::columnar::client_errc::invalid_argument) {
+    PyObject* pyObj_err_ec = PyLong_FromLong(static_cast<long>(CoreClientErrors::VALUE));
+    if (-1 == PyDict_SetItemString(pyObj_error_details, "client_error_code", pyObj_err_ec)) {
+      PyErr_Clear();
+      Py_DECREF(pyObj_error_details);
+      Py_DECREF(pyObj_err_ec);
+      PyErr_SetString(PyExc_RuntimeError,
+                      "Unable to add columnar::error::error_code to error_details.");
+      return nullptr;
+    }
+    Py_DECREF(pyObj_err_ec);
+  } else {
+    PyObject* pyObj_err_ec = PyLong_FromLong(err.ec.value());
+    if (-1 == PyDict_SetItemString(pyObj_error_details, "core_error_code", pyObj_err_ec)) {
+      PyErr_Clear();
+      Py_DECREF(pyObj_error_details);
+      Py_DECREF(pyObj_err_ec);
+      PyErr_SetString(PyExc_RuntimeError,
+                      "Unable to add columnar::error::error_code to error_details.");
+      return nullptr;
+    }
+    Py_DECREF(pyObj_err_ec);
   }
-  Py_DECREF(pyObj_err_ec);
 
   auto msg = err.message.empty() ? err.ec.message() : err.message;
   PyObject* pyObj_msg = PyUnicode_FromString(msg.c_str());
@@ -228,21 +265,21 @@ pycbcc_build_error_details(couchbase::core::columnar::error err, const char* fil
 }
 
 PyObject*
-pycbcc_build_error_details(CoreErrors::ErrorType error_type,
+pycbcc_build_error_details(CoreClientErrors::ErrorCode client_error_code,
                            const char* file,
                            int line,
                            const char* msg)
 {
   PyObject* pyObj_error_details = PyDict_New();
-  PyObject* pyObj_err_type = PyLong_FromLong(error_type);
-  if (-1 == PyDict_SetItemString(pyObj_error_details, "error_type", pyObj_err_type)) {
+  PyObject* pyObj_client_err_code = PyLong_FromLong(client_error_code);
+  if (-1 == PyDict_SetItemString(pyObj_error_details, "client_error_code", pyObj_client_err_code)) {
     PyErr_Clear();
     Py_DECREF(pyObj_error_details);
-    Py_DECREF(pyObj_err_type);
-    PyErr_SetString(PyExc_RuntimeError, "Unable to add error_type to error_details.");
+    Py_DECREF(pyObj_client_err_code);
+    PyErr_SetString(PyExc_RuntimeError, "Unable to add client_error_code to error_details.");
     return nullptr;
   }
-  Py_DECREF(pyObj_err_type);
+  Py_DECREF(pyObj_client_err_code);
 
   PyObject* pyObj_msg = PyUnicode_FromString(msg);
   if (-1 == PyDict_SetItemString(pyObj_error_details, "message", pyObj_msg)) {
@@ -298,7 +335,7 @@ pycbcc_build_exception(couchbase::core::columnar::error err, const char* file, i
 }
 
 PyObject*
-pycbcc_build_exception(CoreErrors::ErrorType error_type,
+pycbcc_build_exception(CoreClientErrors::ErrorCode client_error_code,
                        const char* file,
                        int line,
                        const char* msg,
@@ -310,7 +347,7 @@ pycbcc_build_exception(CoreErrors::ErrorType error_type,
     PyErr_Clear();
   }
 
-  PyObject* pyObj_error_details = pycbcc_build_error_details(error_type, file, line, msg);
+  PyObject* pyObj_error_details = pycbcc_build_error_details(client_error_code, file, line, msg);
   if (pyObj_error_details == nullptr) {
     return nullptr;
   }
@@ -344,7 +381,7 @@ pycbcc_build_exception(CoreErrors::ErrorType error_type,
 }
 
 void
-pycbcc_set_python_exception(CoreErrors::ErrorType error_type,
+pycbcc_set_python_exception(CoreClientErrors::ErrorCode client_error_code,
                             const char* file,
                             int line,
                             const char* msg)
@@ -353,7 +390,7 @@ pycbcc_set_python_exception(CoreErrors::ErrorType error_type,
   PyErr_Fetch(&pyObj_type, &pyObj_value, &pyObj_traceback);
   PyErr_Clear();
 
-  PyObject* pyObj_error_details = pycbcc_build_error_details(error_type, file, line, msg);
+  PyObject* pyObj_error_details = pycbcc_build_error_details(client_error_code, file, line, msg);
   if (pyObj_error_details == nullptr) {
     return;
   }
@@ -438,14 +475,17 @@ build_exception([[maybe_unused]] PyObject* self, PyObject* args)
     if (set_inner_cause) {
       PyErr_SetString(PyExc_RuntimeError, "Test to set bindings inner exception.");
     }
-    if (CoreErrors::VALUE == error_type) {
+    if (CoreClientErrors::VALUE == error_type) {
       return pycbcc_build_exception(
-        CoreErrors::VALUE, __FILE__, __LINE__, "Test to raise ValueError.", set_inner_cause);
-    } else if (CoreErrors::RUNTIME == error_type) {
-      return pycbcc_build_exception(
-        CoreErrors::RUNTIME, __FILE__, __LINE__, "Test to raise RuntimeError.", set_inner_cause);
-    } else if (CoreErrors::INTERNAL_SDK == error_type) {
-      return pycbcc_build_exception(CoreErrors::INTERNAL_SDK,
+        CoreClientErrors::VALUE, __FILE__, __LINE__, "Test to raise ValueError.", set_inner_cause);
+    } else if (CoreClientErrors::RUNTIME == error_type) {
+      return pycbcc_build_exception(CoreClientErrors::RUNTIME,
+                                    __FILE__,
+                                    __LINE__,
+                                    "Test to raise RuntimeError.",
+                                    set_inner_cause);
+    } else if (CoreClientErrors::INTERNAL_SDK == error_type) {
+      return pycbcc_build_exception(CoreClientErrors::INTERNAL_SDK,
                                     __FILE__,
                                     __LINE__,
                                     "Test to raise InternalSdkError.",

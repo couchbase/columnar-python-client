@@ -24,51 +24,53 @@
 
 #define NULL_CONN_OBJECT "Received a null connection."
 
-class CoreErrors
+class CoreClientErrors
 {
 public:
-  enum ErrorType : std::uint8_t {
+  enum ErrorCode : std::uint8_t {
     VALUE = 1,
     RUNTIME,
+    CANCELED,
     INTERNAL_SDK
   };
 
-  CoreErrors()
-    : error_{ INTERNAL_SDK }
+  CoreClientErrors()
+    : error_code_{ INTERNAL_SDK }
   {
   }
 
-  constexpr CoreErrors(ErrorType error)
-    : error_{ error }
+  constexpr CoreClientErrors(ErrorCode error)
+    : error_code_{ error }
   {
   }
 
-  operator ErrorType() const
+  operator ErrorCode() const
   {
-    return error_;
+    return error_code_;
   }
   // lets prevent the implicit promotion of bool to int
   explicit operator bool() = delete;
-  constexpr bool operator==(CoreErrors err) const
+  constexpr bool operator==(CoreClientErrors err) const
   {
-    return error_ == err.error_;
+    return error_code_ == err.error_code_;
   }
-  constexpr bool operator!=(CoreErrors err) const
+  constexpr bool operator!=(CoreClientErrors err) const
   {
-    return error_ != err.error_;
+    return error_code_ != err.error_code_;
   }
 
-  static const char* ALL_CORE_ERRORS(void)
+  static const char* ALL_CORE_CLIENT_ERROR_CODES(void)
   {
     const char* errors = "VALUE "
                          "RUNTIME "
+                         "CANCELED "
                          "INTERNAL_SDK";
 
     return errors;
   }
 
 private:
-  ErrorType error_;
+  ErrorCode error_code_;
 };
 
 struct core_error {
@@ -85,7 +87,7 @@ PyObject*
 pycbcc_build_exception(couchbase::core::columnar::error err, const char* file, int line);
 
 PyObject*
-pycbcc_build_exception(CoreErrors::ErrorType error_type,
+pycbcc_build_exception(CoreClientErrors::ErrorCode client_error_code,
                        const char* file,
                        int line,
                        const char* msg,
@@ -95,7 +97,7 @@ void
 pycbcc_set_python_exception(couchbase::core::columnar::error err, const char* file, int line);
 
 void
-pycbcc_set_python_exception(CoreErrors::ErrorType error_type,
+pycbcc_set_python_exception(CoreClientErrors::ErrorCode client_error_code,
                             const char* file,
                             int line,
                             const char* msg);
