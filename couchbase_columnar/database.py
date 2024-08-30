@@ -24,6 +24,16 @@ if TYPE_CHECKING:
 
 
 class Database:
+    """Create a Database instance.
+
+    The database instance exposes the operations which are available to be performed against a Columnar database.
+
+    Args:
+        cluster (:class:`~couchbase_columnar.cluster.Cluster`): A :class:`~couchbase_columnar.cluster.Cluster` instance.
+        database_name (str): The database name.
+
+    """  # noqa: E501
+
     def __init__(self, cluster: Cluster, database_name: str) -> None:
         from couchbase_columnar.protocol.database import Database as _Database
         self._impl = _Database(cluster, database_name)
@@ -36,4 +46,13 @@ class Database:
         return self._impl.name
 
     def scope(self, scope_name: str) -> Scope:
+        """Creates a :class:`~couchbase_columnar.scope.Scope` instance.
+
+        Args:
+            scope_name (str): Name of the scope.
+
+        Returns:
+            :class:`~couchbase_columnar.scope.Scope`
+
+        """
         return Scope(self._impl, scope_name)

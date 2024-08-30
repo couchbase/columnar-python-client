@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 from typing import (Any,
-                    Iterable,
                     List,
                     Optional)
 
@@ -33,39 +32,43 @@ class BlockingQueryResult(QueryResult):
         self._lazy_execute = lazy_execute
 
     def cancel(self) -> None:
+        """Cancel streaming the query results.
+
+        **VOLATILE** This API is subject to change at any time.
+        """
         self._executor.cancel()
 
     def get_all_rows(self) -> List[Any]:
-        """Convenience method to execute the query.
+        """Convenience method to load all query results into memory.
 
         Returns:
-            List[Any]:  A list of query results.
+            A list of query results.
 
         Example:
-            q_rows = cluster.query('SELECT * FROM `travel-sample` WHERE country LIKE 'United%' LIMIT 2;').all_rows()
+            Read all rows from simple query::
+
+                q_str = 'SELECT * FROM `travel-sample`.inventory WHERE country LIKE 'United%' LIMIT 2;'
+                q_rows = cluster.execute_query(q_str).all_rows()
 
         """
         return BlockingIterator(self._executor).get_all_rows()
 
     def metadata(self) -> QueryMetadata:
-        """The meta-data which has been returned by the query.
+        """Get the query metadata.
 
         Returns:
-            :class:`~couchbase_columnar.query.QueryMetadata`: An instance of :class:`~couchbase_columnar.query.QueryMetadata`.
+            A QueryMetadata instance (if available).
 
         Raises:
-            :class:`RuntimeError`: When the metadata is not available. Metadata is only available once all rows have been iterated.
+            RuntimeError: When the metadata is not available. Metadata is only available once all rows have been iterated.
         """  # noqa: E501
         return self._executor.get_metadata()
 
-    def rows(self) -> Iterable[Any]:
-        """The rows which have been returned by the query.
-
-        .. note::
-            If using the *acouchbase* API be sure to use ``async for`` when looping over rows.
+    def rows(self) -> BlockingIterator:
+        """Retrieve the rows which have been returned by the query.
 
         Returns:
-            Iterable: Either an iterable or async iterable.
+            A blocking iterator for iterating over query results.
         """
         return BlockingIterator(self._executor)
 
@@ -73,7 +76,7 @@ class BlockingQueryResult(QueryResult):
         return iter(BlockingIterator(self._executor))
 
     def __repr__(self) -> str:
-        return "QueryResult()"
+        return "BlockingQueryResult()"
 
 
 class AsyncQueryResult(QueryResult):
@@ -81,16 +84,24 @@ class AsyncQueryResult(QueryResult):
         self._executor = executor
 
     def cancel(self) -> None:
+        """Cancel streaming the query results.
+
+        **VOLATILE** This API is subject to change at any time.
+        """
         self._executor.cancel()
 
     async def get_all_rows(self) -> List[Any]:
-        """Convenience method to execute the query.
+        """Convenience method to load all query results into memory.
 
         Returns:
-            List[Any]:  A list of query results.
+            A list of query results.
 
         Example:
-            q_rows = cluster.query('SELECT * FROM `travel-sample` WHERE country LIKE 'United%' LIMIT 2;').execute()
+
+            Read all rows from simple query::
+
+                q_str = 'SELECT * FROM `travel-sample`.inventory WHERE country LIKE 'United%' LIMIT 2;'
+                q_rows = await cluster.execute_query(q_str).all_rows()
 
         """
         return await AsyncIterator(self._executor).get_all_rows()
@@ -99,21 +110,21 @@ class AsyncQueryResult(QueryResult):
         """The meta-data which has been returned by the query.
 
         Returns:
-            :class:`~couchbase_columnar.query.QueryMetadata`: An instance of :class:`~couchbase_columnar.query.QueryMetadata`.
+            A QueryMetadata instance (if available).
 
         Raises:
-            :class:`RuntimeError`: When the metadata is not available. Metadata is only available once all rows have been iterated.
+            RuntimeError: When the metadata is not available. Metadata is only available once all rows have been iterated.
         """  # noqa: E501
         return self._executor.get_metadata()
 
     def rows(self) -> AsyncIterator:
-        """The rows which have been returned by the query.
+        """Retrieve the rows which have been returned by the query.
 
         .. note::
-            If using the *acouchbase* API be sure to use ``async for`` when looping over rows.
+            Bee sure to use ``async for`` when looping over rows.
 
         Returns:
-            Iterable: Either an iterable or async iterable.
+            An async iterator for iterating over query results.
         """
         return AsyncIterator(self._executor)
 

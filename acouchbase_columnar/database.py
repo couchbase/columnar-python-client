@@ -43,6 +43,15 @@ class AsyncDatabase:
         return self._impl.name
 
     def scope(self, scope_name: str) -> AsyncScope:
+        """Creates a :class:`~acouchbase_columnar.scope.AsyncScope` instance.
+
+        Args:
+            scope_name (str): Name of the scope.
+
+        Returns:
+            :class:`~acouchbase_columnar.scope.AsyncScope`
+
+        """
         return AsyncScope(self._impl, scope_name)
 
 

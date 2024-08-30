@@ -19,6 +19,15 @@ from typing import Callable, Dict
 
 
 class Credential:
+    """Create a Credential instance.
+
+    A Credential is required in order to connect to a Capalla Columnar server.
+
+    .. important::
+        Use the the provided classmethods to create a :class:`.Credential` instance.
+
+    """
+
     def __init__(self, **kwargs: str) -> None:
         username = kwargs.pop('username', None)
         password = kwargs.pop('password', None)
@@ -37,6 +46,9 @@ class Credential:
         self._password = password
 
     def asdict(self) -> Dict[str, str]:
+        """
+        **INTERNAL**
+        """
         return {
             'username': self._username,
             'password': self._password
@@ -44,8 +56,38 @@ class Credential:
 
     @classmethod
     def from_username_and_password(cls, username: str, password: str) -> Credential:
+        """Create a :class:`.Credential` from a username and password.
+
+        Args:
+            username: The username for the Capalla Columnar cluster.
+            password: The password for the Capalla Columnar cluster.
+
+        Returns:
+            A Credential instance.
+        """
         return Credential(username=username, password=password)
 
     @classmethod
     def from_callable(cls, callback: Callable[[], Credential]) -> Credential:
+        """Create a :class:`.Credential` from provided callback.
+
+        The callback is
+
+        Args:
+            callback: Callback that returns a :class:`.Credential`.
+
+        Returns:
+            A Credential instance.
+
+        Example:
+            Retrieve credentials from environment variables::
+
+                def _cred_from_env() -> Credential:
+                    from os import getenv
+                    return Credential.from_username_and_password(getenv('PYCBCC_USERNAME'),
+                                                                 getenv('PYCBCC_PW'))
+
+                cred = Credential.from_callable(_cred_from_env)
+
+        """
         return Credential(**callback().asdict())

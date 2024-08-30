@@ -15,10 +15,10 @@
 
 from acouchbase_columnar import get_event_loop
 from acouchbase_columnar.cluster import AsyncCluster
-from couchbase_columnar.credential import Credential
-from couchbase_columnar.options import (ClusterOptions,
-                                        QueryOptions,
-                                        SecurityOptions)
+from acouchbase_columnar.credential import Credential
+from acouchbase_columnar.options import (ClusterOptions,
+                                         QueryOptions,
+                                         SecurityOptions)
 
 
 async def main() -> None:

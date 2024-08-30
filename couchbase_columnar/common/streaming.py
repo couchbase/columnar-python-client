@@ -38,6 +38,9 @@ from couchbase_columnar.common.query import QueryMetadata
 
 
 class StreamingState(IntEnum):
+    """
+    **INTERNAL
+    """
     NotStarted = 0
     Started = 1
     Cancelled = 2
@@ -45,14 +48,23 @@ class StreamingState(IntEnum):
 
     @staticmethod
     def okay_to_stream(state: StreamingState) -> bool:
+        """
+        **INTERNAL
+        """
         return state == StreamingState.NotStarted
 
     @staticmethod
     def okay_to_iterate(state: StreamingState) -> bool:
+        """
+        **INTERNAL
+        """
         return state == StreamingState.Started
 
 
 class StreamingExecutor(ABC):
+    """
+    **INTERNAL
+    """
 
     @property
     @abstractmethod
@@ -96,19 +108,32 @@ class StreamingExecutor(ABC):
 
 
 class BlockingIterator(Iterator[Any]):
+    """
+    **INTERNAL
+    """
+
     def __init__(self, executor: StreamingExecutor) -> None:
         self._executor = executor
 
     def get_all_rows(self) -> List[Any]:
+        """
+        **INTERNAL
+        """
         return [r for r in list(self)]
 
     def __iter__(self) -> BlockingIterator:
+        """
+        **INTERNAL
+        """
         if self._executor.lazy_execute is True:
             self._executor.submit_query()
 
         return self
 
     def __next__(self) -> Any:
+        """
+        **INTERNAL
+        """
         try:
             return self._executor.get_next_row()
         except StopIteration:
@@ -122,16 +147,29 @@ class BlockingIterator(Iterator[Any]):
 
 
 class AsyncIterator(PyAsyncIterator[Any]):
+    """
+    **INTERNAL
+    """
+
     def __init__(self, executor: StreamingExecutor) -> None:
         self._executor = executor
 
     async def get_all_rows(self) -> List[Any]:
+        """
+        **INTERNAL
+        """
         return [r async for r in self]
 
     def __aiter__(self) -> AsyncIterator:
+        """
+        **INTERNAL
+        """
         return self
 
     async def __anext__(self) -> Any:
+        """
+        **INTERNAL
+        """
         try:
             return await self._executor.get_next_row()
         except StopAsyncIteration:

@@ -21,7 +21,8 @@ from typing import Any
 
 
 class Deserializer(ABC):
-    """Interface a Custom Deserializer must implement
+    """
+    Interface a Custom Deserializer must implement
     """
 
     @abstractmethod
@@ -35,12 +36,34 @@ class Deserializer(ABC):
 
 
 class DefaultJsonDeserializer(Deserializer):
+    """
+    Deserializer using the default Python json library.
+    """
 
     def deserialize(self, value: bytes) -> Any:
+        """Decodes the received bytes into a utf-8 string and deserializes using Python's json library.
+
+        Args:
+            value: The bytes to deserialize.
+
+        Returns:
+            The deserialized Python object.
+        """
         return json.loads(value.decode('utf-8'))
 
 
 class PassthroughDeserializer(Deserializer):
+    """
+    Deserializer used in order to skip deserializing rows and simply pass the bytes along.
+    """
 
     def deserialize(self, value: bytes) -> bytes:
+        """Needed to abide by the :class:`.Deserializer` abstract class.  No deserializing is done.
+
+        Args:
+            value: The bytes to passthrough.
+
+        Returns:
+            The received bytes.
+        """
         return value

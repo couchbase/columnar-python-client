@@ -87,7 +87,7 @@ class QueryError(ColumnarError):
     def code(self) -> int:
         """
         Returns:
-            int: Error code from Columnar server
+            Error code from Columnar server
         """
         return self._code
 
@@ -95,7 +95,7 @@ class QueryError(ColumnarError):
     def server_message(self) -> str:
         """
         Returns:
-            int: Error message from Columnar server
+            Error message from Columnar server
         """
         return self._server_message
 
