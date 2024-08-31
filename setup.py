@@ -43,10 +43,12 @@ if platform.system() == 'Windows':
 
 print(f'Python Columnar SDK version: {PYCBCC_VERSION}')
 
-setup(name='couchbase_columnar',
+setup(name='couchbase-columnar',
       version=PYCBCC_VERSION,
       ext_modules=[CMakeExtension('couchbase_columnar.protocol.pycbcc_core')],
-      cmdclass={'build': BuildCommand, 'build_ext': CMakeBuildExt, 'configure_ext': CMakeConfigureExt},
+      cmdclass={'build': BuildCommand,
+                'build_ext': CMakeBuildExt,
+                'configure_ext': CMakeConfigureExt},
       python_requires='>=3.8',
       packages=find_packages(
           include=['acouchbase_columnar', 'couchbase_columnar', 'acouchbase_columnar.*', 'couchbase_columnar.*'],

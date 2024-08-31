@@ -26,6 +26,7 @@ from typing import (Dict,
                     List,
                     Optional)
 
+# need at least setuptools v62.3.0
 from setuptools import Command, Extension
 from setuptools.command.build import build
 from setuptools.command.build_ext import build_ext
@@ -161,6 +162,10 @@ class CMakeConfig:
                                   '-DCPM_USE_LOCAL_PACKAGES=OFF',
                                   f'-DCPM_SOURCE_CACHE={CXXCBC_CACHE_DIR}',
                                   f'-DCOUCHBASE_CXX_CLIENT_EMBED_MOZILLA_CA_BUNDLE_ROOT={CXXCBC_CACHE_DIR}"']
+
+        cb_cache_option = env.pop('PYCBCC_CB_CACHE_OPTION', None)
+        if cb_cache_option is not None:
+            cmake_config_args.append(f'-DCACHE_OPTION={cb_cache_option}')
 
         if platform.system() == "Windows":
             cmake_config_args += [f'-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{build_type.upper()}={output_dir}']
