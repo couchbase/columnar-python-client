@@ -26,6 +26,7 @@ from typing import (Dict,
                     List,
                     Optional)
 
+# need at least setuptools v62.3.0
 from setuptools import Command, Extension
 from setuptools.command.build import build
 from setuptools.command.build_ext import build_ext
@@ -102,6 +103,43 @@ def process_build_env_vars():  # noqa: C901
 
 
 @dataclass
+class LimitedApiVersion:
+    version_hex: str
+    cp_tag: str
+
+
+def process_limited_api_env():  # noqa: C901
+    limited_api = os.getenv('PYCBCC_LIMITED_API', None)
+    if limited_api is not None:
+        err = None
+        try:
+            limited_api_version = float(limited_api)
+        except Exception:
+            err = OptionError(('Expected use_limited_api to be float of '
+                               'a supported Python version: [3.8, 3.9, 3.10, 3.11, 3.12]'))
+
+        if limited_api_version not in [3.8, 3.9, 3.10, 3.11, 3.12]:
+            err = OptionError(('Expected use_limited_api to be float of '
+                               'a supported Python version: [3.8, 3.9, 3.10, 3.11, 3.12]'))
+
+        if err is not None:
+            raise err
+
+        if limited_api_version == 3.8:
+            return LimitedApiVersion('0x03080000', 'cp38')
+        elif limited_api_version == 3.9:
+            return LimitedApiVersion('0x03090000', 'cp39')
+        elif limited_api_version == 3.10:
+            return LimitedApiVersion('0x030A0000', 'cp310')
+        elif limited_api_version == 3.11:
+            return LimitedApiVersion('0x030B0000', 'cp311')
+        elif limited_api_version == 3.12:
+            return LimitedApiVersion('0x030C0000', 'cp312')
+
+    return None
+
+
+@dataclass
 class CMakeConfig:
     build_type: str
     num_threads: int
@@ -161,6 +199,10 @@ class CMakeConfig:
                                   '-DCPM_USE_LOCAL_PACKAGES=OFF',
                                   f'-DCPM_SOURCE_CACHE={CXXCBC_CACHE_DIR}',
                                   f'-DCOUCHBASE_CXX_CLIENT_EMBED_MOZILLA_CA_BUNDLE_ROOT={CXXCBC_CACHE_DIR}"']
+
+        cb_cache_option = env.pop('PYCBCC_CB_CACHE_OPTION', None)
+        if cb_cache_option is not None:
+            cmake_config_args.append(f'-DCACHE_OPTION={cb_cache_option}')
 
         if platform.system() == "Windows":
             cmake_config_args += [f'-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{build_type.upper()}={output_dir}']
