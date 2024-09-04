@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import json
 from concurrent.futures import Future
 from datetime import timedelta
 from threading import Event
@@ -23,6 +24,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from couchbase_columnar.common.streaming import StreamingState
+from couchbase_columnar.deserializer import PassthroughDeserializer
 from couchbase_columnar.exceptions import QueryError
 from couchbase_columnar.options import QueryOptions
 from couchbase_columnar.query import CancelToken, QueryScanConsistency
@@ -58,6 +60,7 @@ class QueryTestSuite:
         'test_query_with_unused_cancel_token_raises_exception',
         'test_query_with_lazy_execution',
         'test_query_with_lazy_execution_raises_exception',
+        'test_query_passthrough_deserializer',
     ]
 
     @pytest.fixture(scope='class')
@@ -407,6 +410,14 @@ class QueryTestSuite:
         assert result._executor.streaming_state == expected_state
         with pytest.raises(QueryError):
             [r for r in result.rows()]
+
+    def test_query_passthrough_deserializer(self, test_env: BlockingTestEnvironment) -> None:
+        statement = 'FROM range(0, 10) AS num SELECT *'
+        result = test_env.cluster_or_scope.execute_query(statement,
+                                                         QueryOptions(deserializer=PassthroughDeserializer()))
+        for idx, row in enumerate(result.rows()):
+            assert isinstance(row, bytes)
+            assert json.loads(row) == {'num': idx}
 
 
 class ClusterQueryTests(QueryTestSuite):

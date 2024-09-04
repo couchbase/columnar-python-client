@@ -15,3 +15,4 @@
 
 from couchbase_columnar.common.deserializer import DefaultJsonDeserializer as DefaultJsonDeserializer  # noqa: F401
 from couchbase_columnar.common.deserializer import Deserializer as Deserializer  # noqa: F401
+from couchbase_columnar.common.deserializer import PassthroughDeserializer as PassthroughDeserializer  # noqa: F401

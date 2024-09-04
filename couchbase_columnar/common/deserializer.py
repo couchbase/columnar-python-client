@@ -38,3 +38,9 @@ class DefaultJsonDeserializer(Deserializer):
 
     def deserialize(self, value: bytes) -> Any:
         return json.loads(value.decode('utf-8'))
+
+
+class PassthroughDeserializer(Deserializer):
+
+    def deserialize(self, value: bytes) -> bytes:
+        return value
