@@ -15,12 +15,14 @@
 
 from __future__ import annotations
 
+import json
 from asyncio import CancelledError, Future
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import pytest
 
+from acouchbase_columnar.deserializer import PassthroughDeserializer
 from acouchbase_columnar.exceptions import QueryError
 from acouchbase_columnar.options import QueryOptions
 from acouchbase_columnar.result import AsyncQueryResult
@@ -47,7 +49,7 @@ class QueryTestSuite:
         'test_query_raises_exception_prior_to_iterating',
         'test_query_raw_options',
         'test_simple_query',
-
+        'test_query_passthrough_deserializer',
     ]
 
     @pytest.fixture(scope='class')
@@ -241,6 +243,17 @@ class QueryTestSuite:
                                 query_statement_limit2: str) -> None:
         result = await test_env.cluster_or_scope.execute_query(query_statement_limit2)
         await test_env.assert_rows(result, 2)
+
+    @pytest.mark.asyncio
+    async def test_query_passthrough_deserializer(self, test_env: AsyncTestEnvironment) -> None:
+        statement = 'FROM range(0, 10) AS num SELECT *'
+        result = await test_env.cluster_or_scope.execute_query(statement,
+                                                               QueryOptions(deserializer=PassthroughDeserializer()))
+        idx = 0
+        async for row in result.rows():
+            assert isinstance(row, bytes)
+            assert json.loads(row) == {'num': idx}
+            idx += 1
 
 
 class ClusterQueryTests(QueryTestSuite):
