@@ -65,7 +65,7 @@ class QueryOptionsTestSuite:
                                   query_statment: str,
                                   request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                                   query_ctx: QueryContext) -> None:
-        from couchbase_columnar.deserializer import DefaultJsonDeserializer
+        from acouchbase_columnar.deserializer import DefaultJsonDeserializer
         deserializer = DefaultJsonDeserializer()
         q_opts = QueryOptions(deserializer=deserializer)
         req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
@@ -80,7 +80,7 @@ class QueryOptionsTestSuite:
                                          query_statment: str,
                                          request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                                          query_ctx: QueryContext) -> None:
-        from couchbase_columnar.deserializer import DefaultJsonDeserializer
+        from acouchbase_columnar.deserializer import DefaultJsonDeserializer
         deserializer = DefaultJsonDeserializer()
         kwargs = {'deserializer': deserializer}
         req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
@@ -221,7 +221,7 @@ class QueryOptionsTestSuite:
                                       query_statment: str,
                                       request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                                       query_ctx: QueryContext) -> None:
-        from couchbase_columnar.query import QueryScanConsistency
+        from acouchbase_columnar.query import QueryScanConsistency
         q_opts = QueryOptions(scan_consistency=QueryScanConsistency.REQUEST_PLUS)
         req, cancel_token = request_builder.build_query_request(query_statment, q_opts)
         exp_opts = {
@@ -237,7 +237,7 @@ class QueryOptionsTestSuite:
                                              query_statment: str,
                                              request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder],
                                              query_ctx: QueryContext) -> None:
-        from couchbase_columnar.query import QueryScanConsistency
+        from acouchbase_columnar.query import QueryScanConsistency
         kwargs = {'scan_consistency': QueryScanConsistency.REQUEST_PLUS}
         req, cancel_token = request_builder.build_query_request(query_statment, **kwargs)
         exp_opts = {

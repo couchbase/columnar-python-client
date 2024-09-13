@@ -21,14 +21,29 @@ from typing import Union
 
 class QueryScanConsistency(Enum):
     """
-    will allow cached values to be returned. This will improve performance but may not
-    reflect the latest data in the server.
+    Represents the various scan consistency options that are available.
     """
-    NOT_BOUNDED = "not_bounded"
-    REQUEST_PLUS = "request_plus"
+
+    NOT_BOUNDED = 'not_bounded'
+    REQUEST_PLUS = 'request_plus'
+
+
+# This is unfortunate, but Enum is 'special' and this is one of the least invasive manners to document the members
+QueryScanConsistency.NOT_BOUNDED.__doc__ = ('Indicates that no specific consistency is required, '
+                                            'this is the fastest options, but results may not include '
+                                            'the most recent operations which have been performed.')
+QueryScanConsistency.REQUEST_PLUS.__doc__ = ('Indicates that the results to the query should include '
+                                             'all operations that have occurred up until the query was started. '
+                                             'This incurs a performance penalty of waiting for the index to catch '
+                                             'up to the most recent operations, but provides the highest level '
+                                             'of consistency.')
 
 
 class IpProtocol(Enum):
+    """
+    Represents the various IP protocol options that are available when resolving hostnames during the bootstrap and HTTP connection process.
+    """  # noqa: E501
+
     Any = 'any'
     ForceIPv4 = 'force_ipv4'
     ForceIPv6 = 'force_ipv6'
@@ -64,6 +79,11 @@ class IpProtocol(Enum):
                           "of IpProtocol."))
 
 
+IpProtocol.Any.__doc__ = 'Indicates that any IP protocol can be used.'
+IpProtocol.ForceIPv4.__doc__ = 'Indicates that IPv4 must be used.'
+IpProtocol.ForceIPv6.__doc__ = 'Indicates that IPv6 must be used.'
+
+
 class KnownConfigProfiles(Enum):
     """
     **VOLATILE** This API is subject to change at any time.
@@ -95,3 +115,9 @@ class KnownConfigProfiles(Enum):
                           "Excepted config profile to be either of type "
                           "KnownConfigProfiles or str representation "
                           "of KnownConfigProfiles."))
+
+
+KnownConfigProfiles.WanDevelopment.__doc__ = ('Represents a profile that can be used in development environments. '
+                                              'The profiles increase various timeouts to help avoid potential '
+                                              'latency issues when accessing Capella from different Wide Area '
+                                              'Network or Availabilty Zones.')

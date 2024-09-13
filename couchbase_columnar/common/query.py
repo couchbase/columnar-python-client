@@ -27,10 +27,18 @@ from couchbase_columnar.common.core.query import (QueryMetadataCore,
 
 @dataclass
 class CancelToken:
+    """Token that can be passed into a blocking query enabling streaming to be canceled.
+
+    **VOLATILE** This API is subject to change at any time.
+    """
     token: Event
     poll_interval: float = 0.25
 
     def cancel(self) -> None:
+        """Set the token's event to trigger streaming cancellation.
+
+        **VOLATILE** This API is subject to change at any time.
+        """
         self.token.set()
 
 
@@ -39,9 +47,17 @@ class QueryWarning:
         self._raw = raw
 
     def code(self) -> int:
+        """
+        Returns:
+            The query warning code.
+        """
         return self._raw['code']
 
     def message(self) -> str:
+        """
+        Returns:
+            The query warning message.
+        """
         return self._raw['message']
 
     def __repr__(self) -> str:
@@ -56,7 +72,7 @@ class QueryMetrics:
         """Get the total amount of time spent running the query.
 
         Returns:
-            timedelta: The total amount of time spent running the query.
+            The total amount of time spent running the query.
         """
         us = (self._raw.get('elapsed_time') or 0) / 1000
         return timedelta(microseconds=us)
@@ -65,7 +81,7 @@ class QueryMetrics:
         """Get the total amount of time spent executing the query.
 
         Returns:
-            timedelta: The total amount of time spent executing the query.
+            The total amount of time spent executing the query.
         """
         us = (self._raw.get('execution_time') or 0) / 1000
         return timedelta(microseconds=us)
@@ -74,7 +90,7 @@ class QueryMetrics:
         """Get the total number of rows which were part of the result set.
 
         Returns:
-            int: The total number of rows which were part of the result set.
+            The total number of rows which were part of the result set.
         """
         return self._raw.get('result_count') or 0
 
@@ -82,7 +98,7 @@ class QueryMetrics:
         """Get the total number of bytes which were generated as part of the result set.
 
         Returns:
-            int: The total number of bytes which were generated as part of the result set.
+            The total number of bytes which were generated as part of the result set.
         """  # noqa: E501
         return self._raw.get('result_size') or 0
 
@@ -90,7 +106,7 @@ class QueryMetrics:
         """Get the total number of objects that were processed to create the result set.
 
         Returns:
-            int: The total number of objects that were processed to create the result set.
+            The total number of objects that were processed to create the result set.
         """
         return self._raw.get('processed_objects') or 0
 
@@ -106,7 +122,7 @@ class QueryMetadata:
         """Get the request ID which is associated with the executed query.
 
         Returns:
-            str: The request ID which is associated with the executed query.
+            The request ID which is associated with the executed query.
         """
         return self._raw['request_id']
 
@@ -114,7 +130,7 @@ class QueryMetadata:
         """Get warnings that occurred during the execution of the query.
 
         Returns:
-            List[:class:`.QueryWarning`]: Any warnings that occurred during the execution of the query.
+            Any warnings that occurred during the execution of the query.
         """
         return list(map(QueryWarning, self._raw['warnings']))
 
@@ -122,7 +138,7 @@ class QueryMetadata:
         """Get the various metrics which are made available by the query engine.
 
         Returns:
-            Optional[:class:`.QueryMetrics`]: A :class:`.QueryMetrics` instance.
+            A :class:`~couchbase_columnar.query.QueryMetrics` instance.
         """
         return QueryMetrics(self._raw['metrics'])
 

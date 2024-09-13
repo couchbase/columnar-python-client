@@ -25,23 +25,19 @@ from typing import (Any,
                     Literal,
                     Optional,
                     TypedDict,
-                    Union)
+                    Union,
+                    overload)
 
 if sys.version_info < (3, 10):
     from typing_extensions import TypeAlias
 else:
     from typing import TypeAlias
-from typing_extensions import Unpack
 
 from couchbase_columnar.common import JSONType
 from couchbase_columnar.common.deserializer import Deserializer
 from couchbase_columnar.common.enums import IpProtocol, QueryScanConsistency
 
-"""
-    Python Columnar SDK Cluster Options Classes
-"""
-
-
+# need to populate the TypedDict to help the static type checker
 class ClusterOptionsKwargs(TypedDict, total=False):
     allow_unknown_qstr_options: Optional[bool]
     config_poll_floor: Optional[timedelta]
@@ -57,7 +53,6 @@ class ClusterOptionsKwargs(TypedDict, total=False):
     security_options: Optional[SecurityOptionsBase]
     timeout_options: Optional[TimeoutOptionsBase]
     user_agent_extra: Optional[str]
-
 
 ClusterOptionsValidKeys: TypeAlias = Literal[
     'allow_unknown_qstr_options',
@@ -75,7 +70,6 @@ ClusterOptionsValidKeys: TypeAlias = Literal[
     'timeout_options',
     'user_agent_extra',
 ]
-
 
 class ClusterOptionsBase(Dict[str, Any]):
     """
@@ -99,11 +93,31 @@ class ClusterOptionsBase(Dict[str, Any]):
         'user_agent_extra',
     ]
 
-    def __init__(self, **kwargs: Unpack[ClusterOptionsKwargs]) -> None:
-        filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        super().__init__(**filtered_kwargs)
+    @overload
+    def __init__(self) -> None:
+        ...
 
+    @overload
+    def __init__(self,
+                 *,
+                 allow_unknown_qstr_options: Optional[bool] = None,
+                 config_poll_floor: Optional[timedelta] = None,
+                 config_poll_interval: Optional[timedelta] = None,
+                 deserializer: Optional[Deserializer] = None,
+                 disable_mozilla_ca_certificates: Optional[bool] = None,
+                 dns_nameserver: Optional[str] = None,
+                 dns_port: Optional[int] = None,
+                 dump_configuration: Optional[bool] = None,
+                 enable_clustermap_notification: Optional[bool] = None,
+                 ip_protocol: Optional[Union[IpProtocol, str]] = None,
+                 network: Optional[str] = None,
+                 security_options: Optional[SecurityOptionsBase] = None,
+                 timeout_options: Optional[TimeoutOptionsBase] = None,
+                 user_agent_extra: Optional[str] = None,
+                 ) -> None:
+        ...
 
+# need to populate the TypedDict to help the static type checker
 class SecurityOptionsKwargs(TypedDict, total=False):
     trust_only_capella: Optional[bool]
     trust_only_pem_file: Optional[str]
@@ -112,7 +126,6 @@ class SecurityOptionsKwargs(TypedDict, total=False):
     trust_only_platform: Optional[bool]
     verify_server_certificate: Optional[bool]
     cipher_suites: Optional[List[str]]
-
 
 SecurityOptionsValidKeys: TypeAlias = Literal[
     'trust_only_capella',
@@ -140,11 +153,24 @@ class SecurityOptionsBase(Dict[str, object]):
         'cipher_suites',
     ]
 
-    def __init__(self, **kwargs: Unpack[SecurityOptionsKwargs]) -> None:
-        filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        super().__init__(**filtered_kwargs)
+    @overload
+    def __init__(self) -> None:
+        ...
 
+    @overload
+    def __init__(self,
+                 *,
+                 trust_only_capella: Optional[bool] = None,
+                 trust_only_pem_file: Optional[str] = None,
+                 trust_only_pem_str: Optional[str] = None,
+                 trust_only_certificates: Optional[List[str]] = None,
+                 trust_only_platform: Optional[bool] = None,
+                 verify_server_certificate: Optional[bool] = None,
+                 cipher_suites: Optional[List[str]] = None,
+                 ) -> None:
+        ...
 
+# need to populate the TypedDict to help the static type checker
 class TimeoutOptionsKwargs(TypedDict, total=False):
     connect_timeout: Optional[timedelta]
     dispatch_timeout: Optional[timedelta]
@@ -153,7 +179,6 @@ class TimeoutOptionsKwargs(TypedDict, total=False):
     query_timeout: Optional[timedelta]
     resolve_timeout: Optional[timedelta]
     socket_connect_timeout: Optional[timedelta]
-
 
 TimeoutOptionsValidKeys: TypeAlias = Literal[
     'connect_timeout',
@@ -165,10 +190,9 @@ TimeoutOptionsValidKeys: TypeAlias = Literal[
     'socket_connect_timeout',
 ]
 
-
 class TimeoutOptionsBase(Dict[str, object]):
     """
-        **INTERNAL**
+    **INTERNAL**
     """
 
     VALID_OPTION_KEYS: List[TimeoutOptionsValidKeys] = [
@@ -181,16 +205,28 @@ class TimeoutOptionsBase(Dict[str, object]):
         'socket_connect_timeout',
     ]
 
-    def __init__(self, **kwargs: Unpack[TimeoutOptionsKwargs]) -> None:
-        filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        super().__init__(**filtered_kwargs)
+    @overload
+    def __init__(self) -> None:
+        ...
 
+    @overload
+    def __init__(self,
+                 *,
+                 connect_timeout: Optional[timedelta] = None,
+                 dispatch_timeout: Optional[timedelta] = None,
+                 dns_srv_timeout: Optional[timedelta] = None,
+                 query_timeout: Optional[timedelta] = None,
+                 resolve_timeout: Optional[timedelta] = None,
+                 socket_connect_timeout: Optional[timedelta] = None,
+                 ) -> None:
+        ...
 
+# need to populate the TypedDict to help the static type checker
 class QueryOptionsKwargs(TypedDict, total=False):
     deserializer: Optional[Deserializer]
     lazy_execute: Optional[bool]
     named_parameters: Optional[Dict[str, JSONType]]
-    positional_parameters: Optional[Iterable[JSONType]]
+    positional_parameters: Optional[List[JSONType]]
     priority: Optional[bool]
     query_context: Optional[str]
     raw: Optional[Dict[str, Any]]
@@ -214,6 +250,9 @@ QueryOptionsValidKeys: TypeAlias = Literal[
 
 
 class QueryOptionsBase(Dict[str, object]):
+    """
+    **INTERNAL**
+    """
 
     VALID_OPTION_KEYS: List[QueryOptionsValidKeys] = [
         'deserializer',
@@ -228,6 +267,22 @@ class QueryOptionsBase(Dict[str, object]):
         'timeout',
     ]
 
-    def __init__(self, **kwargs: Unpack[QueryOptionsKwargs]) -> None:
-        filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        super().__init__(**filtered_kwargs)
+    @overload
+    def __init__(self) -> None:
+        ...
+
+    @overload
+    def __init__(self,
+                 *,
+                 deserializer: Optional[Deserializer] = None,
+                 lazy_execute: Optional[bool] = None,
+                 named_parameters: Optional[Dict[str, JSONType]] = None,
+                 positional_parameters: Optional[Iterable[JSONType]] = None,
+                 priority: Optional[bool] = None,
+                 query_context: Optional[str] = None,
+                 raw: Optional[Dict[str, Any]] = None,
+                 read_only: Optional[bool] = None,
+                 scan_consistency: Optional[QueryScanConsistency] = None,
+                 timeout: Optional[timedelta] = None,
+                 ) -> None:
+        ...

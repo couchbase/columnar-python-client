@@ -44,28 +44,27 @@ class ClusterOptions(ClusterOptionsBase):
     """Available options to set when creating a cluster.
 
     Cluster options enable the configuration of various global cluster settings.
-    Some options can be set globally for the cluster, but overridden for specific operations (i.e. :class:`~couchbase_columnar.options.ClusterTimeoutOptions`).
+    Some options can be set globally for the cluster, but overridden for specific operations (i.e. :class:`.TimeoutOptions`).
     Most options are optional, values in parenthesis indicate C++ core default that will be used.
 
     .. note::
-
-        The authenticator is mandatory, all the other cluster options are optional.
+        Options and methods marked **VOLATILE** are subject to change at any time.
 
     Args:
-        allow_unknown_qstr_options (bool, optional): If enabled, allows unknown query string options to pass through to C++ core. Defaults to `False` (disabled).
-        config_poll_floor (timedelta, optional): Set to configure polling floor interval. Defaults to `None` (50ms).
-        config_poll_interval (timedelta, optional): Set to configure polling floor interval. Defaults to `None` (2.5s).
-        deserializer (Deserializer, optional): Set to configure global serializer to translate JSON to Python objects. Defaults to `None` (:class:`~couchbase_columnar.deserializer.DefaultJsonDeserializer`).
-        disable_mozilla_ca_certificates (bool, optional): If enabled, prevents the C++ core from loading Mozilla certificates. Defaults to `False` (disabled).
-        dns_nameserver (str, optional): **VOLATILE** This API is subject to change at any time. Set to configure custom DNS nameserver. Defaults to `None`.
-        dns_port (int, optional): **VOLATILE** This API is subject to change at any time. Set to configure custom DNS port. Defaults to `None`.
-        dump_configuration (bool, optional): If enabled, dump received server configuration when TRACE level logging. Defaults to `False` (disabled).
-        enable_clustermap_notification (bool, optional): If enabled, allows server to push configuration updates asynchronously. Defaults to `True` (enabled).
-        ip_protocol (Union[IpProtocol, str], optional): Controls preference of IP protocol for name resolution. Defaults to `None` (any).
-        network (str, optional): Set to configure external network. Defaults to `None` (auto).
-        security_options (SecurityOptions, optional): Security options for SDK connection.
-        timeout_options (TimeoutOptions, optional): Timeout options for various SDK operations. See :class:`~couchbase_columnar.options.ClusterTimeoutOptions` for details.
-        user_agent_extra (str, optional): Set to add further details to identification fields in server protocols. Defaults to `None` (`{Python SDK version} (python/{Python version})`).
+        allow_unknown_qstr_options (Optional[bool]): **VOLATILE** If enabled, allows unknown query string options to pass through to C++ core. Defaults to `False` (disabled).
+        config_poll_floor (Optional[timedelta]): Set to configure polling floor interval. Defaults to `None` (50ms).
+        config_poll_interval (Optional[timedelta]): Set to configure polling floor interval. Defaults to `None` (2.5s).
+        deserializer (Optional[Deserializer]): Set to configure global serializer to translate JSON to Python objects. Defaults to `None` (:class:`~couchbase_columnar.deserializer.DefaultJsonDeserializer`).
+        disable_mozilla_ca_certificates (Optional[bool]): If enabled, prevents the C++ core from loading Mozilla certificates. Defaults to `False` (disabled).
+        dns_nameserver (Optional[str]): **VOLATILE** This API is subject to change at any time. Set to configure custom DNS nameserver. Defaults to `None`.
+        dns_port (Optional[int]): **VOLATILE** This API is subject to change at any time. Set to configure custom DNS port. Defaults to `None`.
+        dump_configuration (Optional[bool]): If enabled, dump received server configuration when TRACE level logging. Defaults to `False` (disabled).
+        enable_clustermap_notification (Optional[bool]): If enabled, allows server to push configuration updates asynchronously. Defaults to `True` (enabled).
+        ip_protocol (Optional[Union[:class:`~couchbase_columnar.options.IpProtocol`, str]]): Controls preference of IP protocol for name resolution. Defaults to `None` (any).
+        network (Optional[str]): Set to configure external network. Defaults to `None` (auto).
+        security_options (Optional[:class:`.SecurityOptions`]): Security options for SDK connection.
+        timeout_options (Optional[:class:`.TimeoutOptions`]): Timeout options for various SDK operations. See :class:`.TimeoutOptions` for details.
+        user_agent_extra (Optional[str]): Set to add further details to identification fields in server protocols. Defaults to `None` (`{Python SDK version} (python/{Python version})`).
     """  # noqa: E501
 
     def apply_profile(self, profile_name: Union[KnownConfigProfiles, str]) -> None:
@@ -112,14 +111,14 @@ class SecurityOptions(SecurityOptionsBase):
     The `verify_server_certificate` option can either be enabled or disabled for any of the specified trust settings.
 
     Args:
-        trust_only_capella (bool, optional): If enabled, SDK will trust only the Capella CA certificate(s). Defaults to `True` (enabled).
-        trust_only_pem_file (str, optional): If set, SDK will trust only the PEM-encoded certificate(s) at the specified file path. Defaults to `None`.
-        trust_only_pem_str (str, optional): If set, SDK will trust only the PEM-encoded certificate(s) in the specified str. Defaults to `None`.
-        trust_only_certificates (List[str], optional): If set, SDK will trust only the PEM-encoded certificate(s) specified. Defaults to `None`.
-        trust_only_platform (bool, optional): If enabled, SDK will trust only the platform certificate(s). Defaults to `None`.
-        verify_server_certificate (bool, optional): If disabled, SDK will trust any certificate regardless of validity.
+        trust_only_capella (Optional[bool]): If enabled, SDK will trust only the Capella CA certificate(s). Defaults to `True` (enabled).
+        trust_only_pem_file (Optional[str]): If set, SDK will trust only the PEM-encoded certificate(s) at the specified file path. Defaults to `None`.
+        trust_only_pem_str (Optional[str]): If set, SDK will trust only the PEM-encoded certificate(s) in the specified str. Defaults to `None`.
+        trust_only_certificates (Optional[List[str]]): If set, SDK will trust only the PEM-encoded certificate(s) specified. Defaults to `None`.
+        trust_only_platform (Optional[bool]): If enabled, SDK will trust only the platform certificate(s). Defaults to `None`.
+        verify_server_certificate (Optional[bool]): If disabled, SDK will trust any certificate regardless of validity.
             Should not be disabled in production environments. Defaults to `True` (enabled).
-        cipher_suites (List[str], optional): Names of TLS cipher suites the SDK is allowed to use while negotiating TLS settings.
+        cipher_suites (Optional[List[str]]): Names of TLS cipher suites the SDK is allowed to use while negotiating TLS settings.
             An empty list indicates any cipher suite supported by the runtime environment may be used.  Defaults to `None` (empty list).
     """  # noqa: E501
 
@@ -189,14 +188,17 @@ class TimeoutOptions(TimeoutOptionsBase):
     These options set the default timeouts for operations for the cluster.  Some operations allow the timeout to be overridden on a per operation basis.
     All options are optional and default to `None`. Values in parenthesis indicate C++ core default that will be used if the option is not set.
 
+    .. note::
+        Options marked **VOLATILE** are subject to change at any time.
+
     Args:
-        connect_timeout (timedelta, optional): Set to configure the period of time allowed to complete bootstrap connection. Defaults to `None` (10s).
-        dispatch_timeout (timedelta, optional): Set to configure the period of time allowed to complete HTTP connection prior to sending request. Defaults to `None` (30s).
-        dns_srv_timeout (timedelta, optional): Set to configure the period of time allowed to complete DNS SRV query. Defaults to `None` (500ms).
-        management_timeout (timedelta, optional): **VOLATILE** Set to configure the period of time allowed for management operations. Defaults to `None` (75s).
-        query_timeout (timedelta, optional): Set to configure the period of time allowed for query operations. Defaults to `None` (10m).
-        resolve_timeout (timedelta, optional): Set to configure the period of time allowed to complete resolve hostname of node to IP address. Defaults to `None` (2s).
-        socket_connect_timeout (timedelta, optional): Set to configure the period of time allowed to complete creating socket connection to resolved IP. Defaults to `None` (2s).
+        connect_timeout (Optional[timedelta]): Set to configure the period of time allowed to complete bootstrap connection. Defaults to `None` (10s).
+        dispatch_timeout (Optional[timedelta]): Set to configure the period of time allowed to complete HTTP connection prior to sending request. Defaults to `None` (30s).
+        dns_srv_timeout (Optional[timedelta]): Set to configure the period of time allowed to complete DNS SRV query. Defaults to `None` (500ms).
+        management_timeout (Optional[timedelta]): **VOLATILE** Set to configure the period of time allowed for management operations. Defaults to `None` (75s).
+        query_timeout (Optional[timedelta]): Set to configure the period of time allowed for query operations. Defaults to `None` (10m).
+        resolve_timeout (Optional[timedelta]): Set to configure the period of time allowed to complete resolve hostname of node to IP address. Defaults to `None` (2s).
+        socket_connect_timeout (Optional[timedelta]): Set to configure the period of time allowed to complete creating socket connection to resolved IP. Defaults to `None` (2s).
     """  # noqa: E501
 
 
@@ -205,19 +207,20 @@ class QueryOptions(QueryOptionsBase):
 
     Timeout will default to cluster setting if not set for the operation.
 
+    .. note::
+        Options marked **VOLATILE** are subject to change at any time.
+
     Args:
-        cancel_token (:class:~`threaad.Event`, optional): None
-        cancel_poll_interval (float, optional): None
-        deserializer (Deserializer, optional): None
-        lazy_execute: (bool, optional): None
-        named_parameters (Dict[str, JSONType], optional): None
-        positional_parameters (Iterable[JSONType], optional): None
-        priority (bool, optional): None
-        query_context (str, optional): None
-        raw (Dict[str, Any], optional): None
-        read_only (bool, optional): None
-        scan_consistency (QueryScanConsistency, optional): None
-        timeout (timedelta, optional): Set to configure allowed time for operation to complete. Defaults to `None` (75s).
+        deserializer (Optional[Deserializer]): Specifies a :class:`~couchbase_columnar.deserializer.Deserializer` to apply to results.  Defaults to `None` (:class:`~couchbase_columnar.deserializer.DefaultJsonDeserializer`).
+        lazy_execute (Optional[bool]): **VOLATILE** If enabled, the query will not execute until the application begins to iterate over results.  Defaulst to `None` (disabled).
+        named_parameters (Optional[Dict[str, :py:type:`~couchbase_columnar.JSONType`]]): Values to use for positional placeholders in query.
+        positional_parameters (Optional[List[:py:type:`~couchbase_columnar.JSONType`]]):, optional): Values to use for named placeholders in query.
+        priority (Optional[bool]): Indicates whether this query should be executed with a specific priority level.
+        query_context (Optional[str]): Specifies the context within which this query should be executed.
+        raw (Optional[Dict[str, Any]]): Specifies any additional parameters which should be passed to the Columnar engine when executing the query.
+        read_only (Optional[bool]): Specifies that this query should be executed in read-only mode, disabling the ability for the query to make any changes to the data.
+        scan_consistency (Optional[QueryScanConsistency]): Specifies the consistency requirements when executing the query.
+        timeout (Optional[timedelta]): Set to configure allowed time for operation to complete. Defaults to `None` (75s).
     """  # noqa: E501
 
 

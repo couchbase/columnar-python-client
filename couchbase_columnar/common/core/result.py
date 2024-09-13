@@ -15,31 +15,47 @@
 
 from __future__ import annotations
 
+import sys
 from abc import ABC, abstractmethod
 from typing import (Any,
-                    AsyncIterable,
                     Coroutine,
-                    Iterable,
                     List,
                     Optional,
                     Union)
+
+if sys.version_info < (3, 9):
+    from typing import AsyncIterator as PyAsyncIterator
+    from typing import Iterator
+else:
+    from collections.abc import AsyncIterator as PyAsyncIterator
+    from collections.abc import Iterator
 
 from couchbase_columnar.common.query import QueryMetadata
 
 
 class QueryResult(ABC):
+    """Abstract base class for query results."""
+
     @abstractmethod
     def cancel(self) -> None:
+        """
+        Cancel streaming the query results.
+
+        **VOLATILE** This API is subject to change at any time.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def get_all_rows(self) -> Union[Coroutine[Any, Any, List[Any]], List[Any]]:
+        """Convenience method to load all query results into memory."""
         raise NotImplementedError
 
     @abstractmethod
     def metadata(self) -> Optional[QueryMetadata]:
+        """Get the query metadata."""
         raise NotImplementedError
 
     @abstractmethod
-    def rows(self) -> Union[AsyncIterable[Any], Iterable[Any]]:
+    def rows(self) -> Union[PyAsyncIterator[Any], Iterator[Any]]:
+        """Retrieve the rows which have been returned by the query."""
         raise NotImplementedError
