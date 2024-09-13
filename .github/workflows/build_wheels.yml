@@ -51,12 +51,25 @@ on:
 
 env:
   DEFAULT_PYTHON: "3.8"
-  PYTHON_VERSIONS: "3.8,3.9,3.10,3.11"
+  PYTHON_VERSIONS: "3.8,3.9,3.10,3.11,3.12"
   X86_64_PLATFORMS: "manylinux2014,musllinux_1_1,macosx,win"
   ARM64_PLATFORMS: "manylinux2014,macosx"
 
 
 jobs:
+  # setup-workflow:
+  #   runs-on: ubuntu-22.04
+  #   outputs:
+  #     python-versions: ${{ steps.set-python-versions.outputs.python-versions }}
+  #   steps:
+  #     - name: Determine Python versions
+  #       id: set-python-versions
+  #       run: |
+  #         export TMP_VERSIONS=$(echo '${{ inputs.setup_config }}' | jq -c '.PYTHON_VERSIONS | map(tostring)')
+  #         echo "python-versions=${TMP_VERSIONS:-$DEFAULT_VERSIONS}" >> $GITHUB_OUTPUT
+  #       env:
+  #         DEFAULT_VERSIONS: ${{ env.PYTHON_VERSIONS }}
+
   general-info:
     runs-on: ubuntu-22.04
     steps:
@@ -72,7 +85,6 @@ jobs:
           echo "X86_64_PLATFORMS=${{ env.X86_64_PLATFORMS }}"
           echo "ARM64_PLATFORMS=${{ env.ARM64_PLATFORMS }}"
 
-
   validate-input:
     runs-on: ubuntu-22.04
     steps:
@@ -81,25 +93,26 @@ jobs:
         run: |
           echo "::error If releasing, must provide a SHA."
           exit 1
-      - name: If release, verify SHA is provided
+      - name: If release, verify SHA is correct length
+        if: inputs.is_release && inputs.sha != ''
+        run: |
+          echo '"${{ inputs.sha }}"' | jq -e '. | length == 40'
+      - name: If release, verify version is provided
         if: inputs.is_release && inputs.version == ''
         run: |
           echo "::error If releasing, must provide a version."
           exit 1
 
 
-  pre-commit:
+  lint:
     runs-on: ubuntu-22.04
     needs: validate-input
-    strategy:
-      matrix:
-        python-version: ["3.8"]
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Python ${{ matrix.python-version }}
+      - name: Setup Python ${{ env.DEFAULT_PYTHON }}
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Confirm Python version
         run: python -c "import sys; print(sys.version)"
       - name: Install dependencies
@@ -126,7 +139,7 @@ jobs:
 
   sdist:
     runs-on: ubuntu-22.04
-    needs: pre-commit
+    needs: lint
     outputs:
       sdist_name: ${{ steps.create_sdist.outputs.sdist_name }}
     steps:
@@ -225,7 +238,7 @@ jobs:
       fail-fast: true
       matrix:
         linux-type: ["manylinux", "musllinux"]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         arch: ["x86_64", "aarch64"]
         exclude:
           - linux-type: musllinux
@@ -359,7 +372,7 @@ jobs:
       fail-fast: true
       matrix:
         os: ["macos-13", "macos-14"]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         arch: ["x86_64", "arm64"]
         exclude:
           - os: macos-13
@@ -464,7 +477,7 @@ jobs:
       fail-fast: true
       matrix:
         os: ["windows-2022"]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         arch: ["AMD64"]
     steps:
       - uses: actions/download-artifact@v4
@@ -525,10 +538,10 @@ jobs:
       #   run: |
       #     abi3audit --strict --report %WHEEL_PATH%\%WHEEL_NAME% > abi3audit_report.json
       #     python check_abi3audit.py abi3audit_report.json pycbcc
-      - name: Repair wheel
-        shell: cmd
-        run: |
-          delvewheel repair -v -w %WHEEL_PATH% %WHEEL_PATH%\%WHEEL_NAME%
+      # - name: Repair wheel
+      #   shell: cmd
+      #   run: |
+      #     delvewheel repair -v -w %WHEEL_PATH% %WHEEL_PATH%\%WHEEL_NAME%
       - name: Upload Python ${{ matrix.python-version }} wheel
         uses: actions/upload-artifact@v4
         with:
@@ -546,7 +559,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu-22.04']
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         arch: ['x86_64', 'aarch64']
     steps:
       - name: Set up QEMU
@@ -590,7 +603,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu-22.04']
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         arch: ['x86_64']
     steps:
       - uses: actions/download-artifact@v4
@@ -625,7 +638,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["macos-13", "macos-14"]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -662,7 +675,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["windows-latest"]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
         arch: ["AMD64"]
     steps:
       - uses: actions/download-artifact@v4

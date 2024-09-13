@@ -91,7 +91,7 @@ class QueryTestSuite:
         else:
             return f'SELECT * FROM {test_env.fqdn} LIMIT 5;'
 
-    @pytest.mark.parametrize('cancel_via_token', [True])
+    @pytest.mark.parametrize('cancel_via_token', [False, True])
     def test_cancel_positional_params_override(self,
                                                test_env: BlockingTestEnvironment,
                                                query_statement_pos_params_limit2: str,
@@ -435,7 +435,9 @@ class ClusterQueryTests(QueryTestSuite):
     @pytest.fixture(scope='class', name='test_env')
     def couchbase_test_environment(self,
                                    sync_test_env: BlockingTestEnvironment) -> YieldFixture[BlockingTestEnvironment]:
+        sync_test_env.setup()
         yield sync_test_env
+        sync_test_env.teardown()
 
 
 class ScopeQueryTests(QueryTestSuite):
@@ -453,6 +455,8 @@ class ScopeQueryTests(QueryTestSuite):
     @pytest.fixture(scope='class', name='test_env')
     def couchbase_test_environment(self,
                                    sync_test_env: BlockingTestEnvironment) -> YieldFixture[BlockingTestEnvironment]:
+        sync_test_env.setup()
         test_env = sync_test_env.enable_scope()
         yield test_env
         test_env.disable_scope()
+        test_env.teardown()

@@ -1,0 +1,176 @@
+name: verify_release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The version of the SDK to install and verify."
+        required: true
+        default: ""
+        type: string
+      packaging_index:
+        description: "The packaging index to download the SDK from."
+        required: true
+        default: "PYPI"
+        type: choice
+        options:
+          - PYPI
+          - TEST_PYPI
+      test_input:
+        description: "JSON formatted object representing test input."
+        required: true
+        default: ""
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: "The version of the SDK to install and verify."
+        required: true
+        default: ""
+        type: string
+      packaging_index:
+        description: "The packaging index to download the SDK from."
+        required: true
+        default: ""
+        type: string
+      test_input:
+        description: "JSON formatted object representing test input."
+        required: true
+        default: ""
+        type: string
+
+
+jobs:
+  validate-input:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Verify SDK version
+        if: inputs.version == ''
+        run: |
+          echo "::error Must provide a valid SDK version."
+          exit 1
+      - name: Verify packaging index
+        if: inputs.packaging_index == ''
+        run: |
+          echo "::error Must provide a valid packaging index."
+          exit 1
+      - name: Verify test input has been provided
+        if: inputs.test_input == ''
+        run: |
+          echo "::error Must provide a test input JSON object."
+          exit 1
+      - name: Validate host
+        if: ${{ inputs.test_input != '' && fromJSON(inputs.test_input).PYCBCC_HOST == ''}}
+        run: |
+          echo "::error must provide PYCBCC_HOST."
+          exit 1
+      - name: Validate user
+        if: ${{ inputs.test_input != '' && fromJSON(inputs.test_input).PYCBCC_USERNAME == '' }}
+        run: |
+          echo "::error must provide PYCBCC_USERNAME."
+          exit 1
+      - name: Validate password
+        if: ${{ inputs.test_input != '' && fromJSON(inputs.test_input).PYCBCC_PASSWORD == '' }}
+        run: |
+          echo "::error must provide PYCBCC_PASSWORD."
+          exit 1
+      - name: Validate FQDN
+        if: ${{ inputs.test_input != '' && fromJSON(inputs.test_input).PYCBCC_FQDN == '' }}
+        run: |
+          echo "::error must provide PYCBCC_FQDN."
+          exit 1
+
+  test-setup:
+    runs-on: ubuntu-22.04
+    outputs:
+      install-cmd: ${{ inputs.packaging_index == 'TEST_PYPI' && steps.test-pypi-cmd.outputs.install_cmd && steps.pypi-cmd.outputs.install_cmd }}
+    needs: validate-input
+    steps:
+      - name: Setup Python
+        if: ${{ inputs.test_input != '' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+      - name: Build test_config.ini
+        if: ${{ inputs.test_input != '' }}
+        run: |
+          export $(echo '${{ inputs.test_input }}' | jq -r '. | to_entries[] | join("=")')
+          echo "Output environment"
+          env | grep PYCBCC
+          curl -o build_test_config.py ${CI_SCRIPTS_URL}/ci_scripts/build_test_config.py
+          python build_test_config.py
+          echo "Output test_config.ini"
+          cat test_config.ini
+          mkdir pycbcc_test
+          mv test_config.ini pycbcc_test
+        env:
+          CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
+      - name: Create install command
+        id: test-pypi-cmd
+        if: ${{ inputs.packaging_index == 'TEST_PYPI'}}
+        run: |
+          export INSTALL_CMD='-i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple couchbase==$SDK_VERSION'
+          echo "INSTALL_CMD=$INSTALL_CMD"
+          echo "install_cmd=$INSTALL_CMD" >> $GITHUB_OUTPUT
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+      - name: Create install command
+        id: pypi-cmd
+        if: ${{ inputs.packaging_index  == 'PYPI'}}
+        run: |
+          export=INSTALL_CMD='couchbase==$SDK_VERSION'
+          echo "INSTALL_CMD=$INSTALL_CMD"
+          echo "install_cmd=$INSTALL_CMD" >> $GITHUB_OUTPUT
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+      - name: Upload test setup
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-test-setup
+          path: |
+            pycbcc_test/
+
+  verify-linux:
+    runs-on: ubuntu-22.04
+    needs: test-setup
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        arch: ['x86_64', 'aarch64']
+        api: ["acouchbase", "couchbase"]
+    steps:
+      - name: Set up QEMU
+        if: ${{ matrix.arch == 'aarch64' }}
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Download test setup
+        uses: actions/download-artifact@v4
+        with:
+          name: pycbcc-test-setup
+          path: pycbcc
+      - name: Download quick test script
+        run: |
+          cd pycbcc
+          curl -o columnar_async_quick_test.py ${CI_SCRIPTS_URL}/release_smoke_tests/columnar_async_quick_test.py
+          curl -o columnar_quick_test.py ${CI_SCRIPTS_URL}/release_smoke_tests/columnar_quick_test.py
+        env:
+          CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
+      - name: Run verification tests in docker
+        uses: addnab/docker-run-action@v3
+        with:
+          image: python:${{ matrix.python-version }}-slim-bullseye
+          options: >-
+            --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64'}}
+            -v ${{ github.workspace }}/pycbcc:/pycbcc
+            -e INSTALL_CMD=${{ needs.test-setup.outputs.install-cmd }}
+          run: |
+            env
+            python -m pip install --upgrade pip setuptools wheel
+            python -m pip install $INSTALL_CMD -v -v -v
+            python -m pip list
+            cd pycbcc
+            python columnar_quick_test.py
+            python columnar_async_quick_test.py
