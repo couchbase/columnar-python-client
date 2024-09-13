@@ -1,0 +1,691 @@
+name: build_wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      is_release:
+        description: "Set to true if a release version."
+        required: true
+        default: false
+        type: boolean
+      sha:
+        description: "The git SHA to use for release.  Only set if needing to publish"
+        required: false
+        default: ""
+        type: string
+      version:
+        description: "The Release version.  Allowed format: x.y.z[-alphaN | -betaN | -rcN | -devN | -postN]"
+        required: false
+        default: ""
+        type: string
+      cxx_change:
+        description: "The PR number or SHA if wanting to build against a PR/SHA in the C++ SDK"
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      is_release:
+        description: "Set to true if a release version."
+        required: true
+        default: false
+        type: boolean
+      sha:
+        description: "The git SHA to use for release.  Only set if needing to publish"
+        required: false
+        default: ""
+        type: string
+      version:
+        description: "The Release version.  Allowed format: x.y.z[-alphaN | -betaN | -rcN | -devN | -postN]"
+        required: false
+        default: ""
+        type: string
+      cxx_change:
+        description: "The PR number or SHA if wanting to build against a PR/SHA in the C++ SDK"
+        required: false
+        type: string
+    outputs:
+      workflow_run_id:
+        description: "The workflow run ID"
+        value: ${{ github.run_id }}
+
+
+env:
+  DEFAULT_PYTHON: "3.8"
+  PYTHON_VERSIONS: "3.8,3.9,3.10,3.11"
+  X86_64_PLATFORMS: "manylinux2014,musllinux_1_1,macosx,win"
+  ARM64_PLATFORMS: "manylinux2014,macosx"
+
+
+jobs:
+  general-info:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Output workflow info
+        run: |
+          echo "Workflow Run ID=${{ github.run_id }}"
+          echo "is_release=${{ inputs.is_release }}"
+          echo "SHA=${{ inputs.sha }}"
+          echo "version=${{ inputs.version }}"
+          echo "cxx_change=${{ inputs.cxx_change }}"
+          echo "DEFAULT_PYTHON=${{ env.DEFAULT_PYTHON }}"
+          echo "PYTHON_VERSIONS=${{ env.PYTHON_VERSIONS }}"
+          echo "X86_64_PLATFORMS=${{ env.X86_64_PLATFORMS }}"
+          echo "ARM64_PLATFORMS=${{ env.ARM64_PLATFORMS }}"
+
+
+  validate-input:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: If release, verify SHA is provided
+        if: inputs.is_release && inputs.sha == ''
+        run: |
+          echo "::error If releasing, must provide a SHA."
+          exit 1
+      - name: If release, verify SHA is provided
+        if: inputs.is_release && inputs.version == ''
+        run: |
+          echo "::error If releasing, must provide a version."
+          exit 1
+
+
+  pre-commit:
+    runs-on: ubuntu-22.04
+    needs: validate-input
+    strategy:
+      matrix:
+        python-version: ["3.8"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements.txt
+          python -m pip install pre-commit
+      - name: Set SDK version
+        if: inputs.version != ''
+        run: |
+          git config user.name "Couchbase SDK Team"
+          git config user.email "sdk_dev@couchbase.com"
+          git tag -a $COUCHBASE_VERSION -m "Release of client version $COUCHBASE_VERSION"
+          python couchbase_columnar_version.py --mode make
+        env:
+          COUCHBASE_VERSION: ${{ inputs.version }}
+      - name: Set SDK version
+        if: inputs.version == ''
+        run: |
+          python couchbase_columnar_version.py --mode make
+      - name: Run pre-commit
+        run: pre-commit run --all-files
+
+
+  sdist:
+    runs-on: ubuntu-22.04
+    needs: pre-commit
+    outputs:
+      sdist_name: ${{ steps.create_sdist.outputs.sdist_name }}
+    steps:
+      - name: Checkout (with SHA)
+        if: inputs.sha != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Checkout (no SHA)
+        if: inputs.sha == ''
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Checkout pull-request
+        if: github.event_name == 'workflow_dispatch' && inputs.cxx_change != '' && startsWith(inputs.cxx_change, 'PR_')
+        run: |
+          cd deps/couchbase-cxx-client
+          git fetch origin pull/$(echo "$CXX_CHG" | cut -d'_' -f 2)/head:tmp
+          git checkout tmp
+          git log --oneline -n 10
+        env:
+          CXX_CHG: ${{ inputs.cxx_change }}
+      - name: Checkout branch
+        if: github.event_name == 'workflow_dispatch' && inputs.cxx_change != '' && startsWith(inputs.cxx_change, 'BR_')
+        run: |
+          cd deps/couchbase-cxx-client
+          git fetch origin
+          git --no-pager branch -r
+          git checkout $(echo "$CXX_CHG" | cut -d'_' -f 2)
+          git log --oneline -n 10
+          cd ../..
+        env:
+          CXX_CHG: ${{ inputs.cxx_change }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+      - name: Set CPM cache
+        run: PYCBCC_USE_OPENSSL=off python setup.py configure_ext
+      - name: Set SDK version
+        if: inputs.version != ''
+        run: |
+          git config user.name "Couchbase SDK Team"
+          git config user.email "sdk_dev@couchbase.com"
+          git tag -a $PYCBCC_VERSION -m "Release of client version $PYCBCC_VERSION"
+          python couchbase_columnar_version.py --mode make
+        env:
+          PYCBCC_VERSION: ${{ inputs.version }}
+      - name: Set SDK version
+        if: inputs.version == ''
+        run: |
+          python couchbase_columnar_version.py --mode make
+      - name: Create sdist
+        id: create_sdist
+        run: |
+          rm -rf ./build
+          python -c "import platform;print(platform.uname())"
+          python setup.py sdist
+          cd dist
+          ls -alh
+          SDIST_NAME=$(find . -name '*.tar.gz' | cut -c 3- | rev | cut -c 8- | rev)
+          echo "SDIST_NAME=$SDIST_NAME"
+          echo "sdist_name=$SDIST_NAME" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-artifact-sdist
+          path: |
+            ./dist/*.tar.gz
+      # - name: 'Make build scripts executable and tar to retain'
+      #   run: |
+      #     chmod 755 scripts/audit_abi3_wheel*
+      #     tar -cvf build_scripts.tar scripts/
+      # - uses: actions/upload-artifact@v4
+      #   with:
+      #     retention-days: 1
+      #     name: pycbcc-${{ inputs.version }}-build-scripts
+      #     path: build_scripts.tar
+
+
+  linux-wheels:
+    needs: sdist
+    name: Build Python ${{ matrix.python-version }} ${{ matrix.linux-type }} wheel (${{ matrix.arch }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: true
+      matrix:
+        linux-type: ["manylinux", "musllinux"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        arch: ["x86_64", "aarch64"]
+        exclude:
+          - linux-type: musllinux
+            arch: aarch64
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pycbcc-artifact-sdist
+      - name: Extract sdist source
+        run: |
+          ls -alh
+          SDIST_NAME=${{ needs.sdist.outputs.sdist_name }}
+          tar -xvzf $SDIST_NAME.tar.gz
+          cp -r $SDIST_NAME/. .
+          rm -rf $SDIST_NAME
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies & setup
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          mkdir -p wheelhouse/dist_debug
+          id
+          ls -alh
+          curl -o auditwheel-pycbcc ${CI_SCRIPTS_URL}/manylinux/auditwheel-pycbcc
+          curl -o build-wheels-columnar.sh ${CI_SCRIPTS_URL}/manylinux/build-wheels-columnar.sh
+          curl -o parse_wheel_name.py ${CI_SCRIPTS_URL}/ci_scripts/parse_wheel_name.py
+          chmod 755 build-wheels-columnar.sh
+        env:
+          CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
+      - name: Set CPython Version
+        id: cpython_version
+        run: |
+          CPYTHON_VERSION=$(python -c "import sys;ver=sys.version_info;print(f'cp{ver.major}{ver.minor}')")
+          echo "CPython = $CPYTHON_VERSION-$CPYTHON_VERSION"
+          echo "cpython_version=$CPYTHON_VERSION-$CPYTHON_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Set up QEMU
+        if: ${{ matrix.arch == 'aarch64' }}
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.job }}-${{ matrix.linux-type }}-${{ matrix.arch }}-python${{ matrix.python-version }}
+      - name: Run in docker
+        uses: addnab/docker-run-action@v3
+        with:
+          image: jacasey/pycbc_${{ matrix.linux-type == 'manylinux' && 'manylinux2014' || 'musllinux_1_1' }}_${{ matrix.arch }}:1.0.1
+          options: >-
+            --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64'}}
+            -v ${{ github.workspace }}:/work
+            -e PYTHON_SDK_WORKDIR=/work
+            -e PYTHON_SDK_WHEELHOUSE=/work/wheelhouse/dist
+            -e PYTHON_SDK_DEBUG_WHEELHOUSE=/work/wheelhouse/dist_debug
+            -e AUDITWHEEL=/work/auditwheel-pycbcc
+            -e PARSE_WHEEL_NAME=/work/parse_wheel_name.py
+            -e WHEEL_PLATFORM=${{ matrix.linux-type == 'manylinux' && 'manylinux2014' || 'musllinux_1_1' }}_${{ matrix.arch }}
+            -e CPYTHON_VERSIONS=${{ steps.cpython_version.outputs.cpython_version }}
+            -e PYCBCC_USE_OPENSSL=OFF
+            -e PYCBCC_BUILD_TYPE=RelWithDebInfo
+            -e CCACHE_DIR=/work/.ccache
+            -e PYCBCC_CB_CACHE_OPTION=ccache
+            -e PYCBCC_VERBOSE_MAKEFILE=ON
+          run: |
+            cd /work
+            ls -alh
+            env
+            ./build-wheels-columnar.sh
+      - name: Upload Python ${{ matrix.python-version }} wheel
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: ${{ matrix.linux-type }}-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          path: |
+            wheelhouse/dist/*.whl
+      - name: Upload Python ${{ matrix.python-version }} debug wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-debug-artifact-${{ matrix.linux-type }}-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          path: |
+            wheelhouse/dist_debug/*.whl
+
+
+  save-docs-shared_object:
+    needs: linux-wheels
+    name: Save a shared object for building docs
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: manylinux-x86_64-python${{ env.DEFAULT_PYTHON }}-wheel
+      - name: Setup Python ${{ env.DEFAULT_PYTHON }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies & setup
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          curl -o parse_wheel_name.py ${CI_SCRIPTS_URL}/ci_scripts/parse_wheel_name.py
+        env:
+          CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
+      - name: Save docs shared object
+        run: |
+          mkdir so_output
+          WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
+          WHEEL_ROOT=$(python parse_wheel_name.py $WHEEL_NAME "couchbase_columnar")
+          python -m wheel unpack $WHEEL_NAME
+          ls -alh
+          cp $WHEEL_ROOT/couchbase_columnar/protocol/pycbcc_core.so so_output
+      - name: Upload Python ${{ env.DEFAULT_PYTHON }} docs shared object
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: manylinux-x86_64-python${{ env.DEFAULT_PYTHON }}-shared-object
+          path: |
+            so_output/pycbcc_core.so
+
+
+  macos-wheels:
+    needs: sdist
+    name: Build Python ${{ matrix.python-version }} macos wheel on ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["macos-13", "macos-14"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        arch: ["x86_64", "arm64"]
+        exclude:
+          - os: macos-13
+            arch: arm64
+          - os: macos-14
+            arch: x86_64
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pycbcc-artifact-sdist
+      - name: Extract sdist source
+        run: |
+          ls -alh
+          SDIST_NAME=${{ needs.sdist.outputs.sdist_name }}
+          tar -xvzf $SDIST_NAME.tar.gz
+          cp -r $SDIST_NAME/. .
+          rm -rf $SDIST_NAME
+      - name: Install ccache
+        run: |
+          brew install ccache
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.job }}-${{ matrix.os }}-${{ matrix.arch }}-python${{ matrix.python-version }}
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies & setup
+        run: |
+          python -m pip install --upgrade pip setuptools wheel delocate
+          mkdir wheelhouse
+          mkdir wheelhouse/dist
+          mkdir wheelhouse/dist_debug
+          curl -o parse_wheel_name.py ${CI_SCRIPTS_URL}/ci_scripts/parse_wheel_name.py
+        env:
+          CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
+      - name: Build wheel ${{ matrix.arch }}
+        run: |
+          ls -alh
+          env
+          python -m pip wheel . --no-deps -w wheelhouse/dist -v -v -v
+          cd wheelhouse/dist
+          WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
+          echo "WHEEL_PATH=wheelhouse/dist" >> $GITHUB_ENV
+          echo "WHEEL_NAME=$WHEEL_NAME" >> $GITHUB_ENV
+        env:
+          PYCBCC_BUILD_TYPE: RelWithDebInfo
+          PYCBCC_USE_OPENSSL: OFF
+          PYCBCC_VERBOSE_MAKEFILE: ON
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
+          PYCBCC_CB_CACHE_OPTION: ccache
+          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.cibw_archs == 'arm64' && '11.0' || '10.15' }}
+          ARCHFLAGS: "${{ matrix.arch == 'arm64' && '-arch arm64' || '-arch x86_64' }}"
+          CMAKE_OSX_ARCHITECTURES: ${{ matrix.arch == 'arm64' && 'arm64' || 'x86_64' }}
+          _PYTHON_HOST_PLATFORM: ${{ matrix.arch == 'arm64' && 'macosx-11-arm64' || 'macosx-10.15-x86_64' }}
+      # - name: Validate wheel ABI
+      #   run: |
+      #     ./audit_abi3_wheel $WHEEL_PATH/$WHEEL_NAME check_abi3audit.py pycbcc
+      - name: Repair wheel
+        run: |
+          cd $WHEEL_PATH
+          delocate-wheel --require-archs ${{ matrix.arch }} -v $WHEEL_NAME
+      - name: Reduce wheel size
+        run: |
+          WHEEL_ROOT=$(python parse_wheel_name.py $WHEEL_NAME "couchbase_columnar")
+          cd $WHEEL_PATH
+          python -m wheel unpack $WHEEL_NAME
+          ls -alh
+          mv $WHEEL_NAME ../dist_debug
+          cd $WHEEL_ROOT/couchbase_columnar/protocol
+          cp pycbcc_core.so pycbcc_core.orig.so
+          xcrun strip -Sx pycbcc_core.so
+          ls -alh | grep pycbcc
+          rm pycbcc_core.orig.so
+          cd ../../..
+          python -m wheel pack $WHEEL_ROOT
+          ls -alh
+      - name: Upload Python ${{ matrix.python-version }} wheel
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: macos-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          path: |
+            wheelhouse/dist/*.whl
+      - name: Upload Python ${{ matrix.python-version }} debug wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-debug-artifact-macos-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          path: |
+            wheelhouse/dist_debug/*.whl
+
+
+  windows-wheels:
+    needs: sdist
+    name: Build Python ${{ matrix.python-version }} Windows wheel (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: ["windows-2022"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        arch: ["AMD64"]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pycbcc-artifact-sdist
+      - name: Extract sdist source
+        run: |
+          dir
+          set SDIST_NAME=${{ needs.sdist.outputs.sdist_name }}
+          tar -xvzf %SDIST_NAME%.tar.gz
+          xcopy %SDIST_NAME% . /E
+          rmdir %SDIST_NAME% /S /Q
+        shell: cmd
+      # - name: ccache
+      #   uses: hendrikmuhs/ccache-action@v1.2
+      #   with:
+      #     variant: sscache
+      #     key: ${{ github.job }}-${{ matrix.os }}-${{ matrix.arch }}-python${{ matrix.python-version }}
+      - name: Install NASM
+        run: |
+          choco install --no-progress nasm
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies & setup
+        run: |
+          python -m pip install --upgrade pip setuptools wheel delvewheel abi3audit
+          md wheelhouse
+          md wheelhouse\dist
+          md wheelhouse\dist_debug
+        shell: cmd
+        # env:
+        #   CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
+      - name: Build Python ${{ matrix.python-version }} wheel for Windows (${{ matrix.arch }})
+        run: |
+          dir /a
+          set
+          python -m pip wheel . --no-deps -w wheelhouse\dist -v -v -v
+        shell: cmd
+        env:
+          PYCBCC_USE_OPENSSL: OFF
+          PYCBCC_VERBOSE_MAKEFILE: ON
+      - name: Find wheel
+        run: |
+          $env:WHEEL_PATH="wheelhouse\dist"
+          $env:WHEEL_NAME=$(gci $env:WHEEL_PATH\*.whl).Name
+          echo "WHEEL_PATH=$env:WHEEL_PATH" >> $env:GITHUB_ENV
+          echo "WHEEL_NAME=$env:WHEEL_NAME" >> $env:GITHUB_ENV
+      - name: Confirm environment
+        shell: cmd
+        run: |
+          env
+      # - name: Validate wheel ABI
+      #   shell: cmd
+      #   run: |
+      #     abi3audit --strict --report %WHEEL_PATH%\%WHEEL_NAME% > abi3audit_report.json
+      #     python check_abi3audit.py abi3audit_report.json pycbcc
+      - name: Repair wheel
+        shell: cmd
+        run: |
+          delvewheel repair -v -w %WHEEL_PATH% %WHEEL_PATH%\%WHEEL_NAME%
+      - name: Upload Python ${{ matrix.python-version }} wheel
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: windows-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          path: |
+            wheelhouse/dist/*.whl
+
+
+  validate-manylinux-wheels:
+    needs: linux-wheels
+    name: Validate Python ${{ matrix.python-version }} wheel for linux (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu-22.04']
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        arch: ['x86_64', 'aarch64']
+    steps:
+      - name: Set up QEMU
+        if: ${{ matrix.arch == 'aarch64' }}
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - uses: actions/download-artifact@v4
+        with:
+          name: manylinux-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+      - name: Run in docker
+        uses: addnab/docker-run-action@v3
+        with:
+          image: python:${{ matrix.python-version }}-slim-bullseye
+          options: >-
+            --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64'}}
+            -v ${{ github.workspace }}:/work
+          run: |
+            python -c "import sys; print(sys.version)"
+            cd /work
+            ls -alh
+            FULL_WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
+            echo "FULL_WHEEL_NAME=$FULL_WHEEL_NAME"
+            python -m pip install $FULL_WHEEL_NAME
+            python -c "from couchbase_columnar.protocol import get_metadata;import pprint;pprint.pprint(get_metadata(detailed=True))"
+      - name: Upload Python ${{ matrix.python-version }} wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-artifact-manylinux-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          path: ./*.whl
+
+
+  validate-musllinux-wheels:
+    needs: linux-wheels
+    name: Validate Python ${{ matrix.python-version }} wheel for alpine (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    container:
+      image: python:${{ matrix.python-version }}-alpine3.19
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu-22.04']
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        arch: ['x86_64']
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: musllinux-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+      - name: Validate wheel
+        id: validate_wheel
+        run: |
+          FULL_WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
+          echo "FULL_WHEEL_NAME=$FULL_WHEEL_NAME"
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install $FULL_WHEEL_NAME
+          python -c "from couchbase_columnar.protocol import get_metadata;import pprint;pprint.pprint(get_metadata(detailed=True))"
+      - name: Upload Python ${{ matrix.python-version }} wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-artifact-musllinux-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          path: ./*.whl
+
+
+  validate-macos-wheels:
+    needs: macos-wheels
+    name: Validate Python ${{ matrix.python-version }} wheel for macos (${{ matrix.os == 'macos-14' && 'arm64' || 'x86_64' }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-13", "macos-14"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-${{ matrix.os == 'macos-14' && 'arm64' || 'x86_64' }}-python${{ matrix.python-version }}-wheel
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+      - name: Validate wheel
+        id: validate_wheel
+        run: |
+          FULL_WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
+          echo "FULL_WHEEL_NAME=$FULL_WHEEL_NAME"
+          python -m pip install $FULL_WHEEL_NAME
+          python -c "from couchbase_columnar.protocol import get_metadata;import pprint;pprint.pprint(get_metadata(detailed=True))"
+      - name: Upload Python ${{ matrix.python-version }} wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-artifact-macos-${{ matrix.os == 'macos-14' && 'arm64' || 'x86_64' }}-python${{ matrix.python-version }}-wheel
+          path: ./*.whl
+
+
+  validate-windows-wheels:
+    needs: windows-wheels
+    name: Validate Python ${{ matrix.python-version }} wheel Windows (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["windows-latest"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        arch: ["AMD64"]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+      - name: Validate wheel
+        run: |
+          $env:WHEEL_NAME=$(gci *.whl).Name
+          gci $env:WHEEL_NAME
+          python -m pip install $env:WHEEL_NAME
+          python -c "from couchbase_columnar.protocol import get_metadata;import pprint;pprint.pprint(get_metadata(detailed=True))"
+      - name: Upload Python ${{ matrix.python-version }} wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-artifact-windows-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          path: ./*.whl
