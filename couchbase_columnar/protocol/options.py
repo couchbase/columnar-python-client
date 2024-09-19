@@ -147,7 +147,7 @@ class TimeoutOptionsTransforms(TypedDict):
     dispatch_timeout: Dict[Literal['dispatch_timeout'], Callable[[Any], int]]
     dns_srv_timeout: Dict[Literal['dns_srv_timeout'], Callable[[Any], int]]
     management_timeout: Dict[Literal['management_timeout'], Callable[[Any], int]]
-    query_timeout: Dict[Literal['analytics_timeout'], Callable[[Any], int]]
+    query_timeout: Dict[Literal['query_timeout'], Callable[[Any], int]]
     resolve_timeout: Dict[Literal['resolve_timeout'], Callable[[Any], int]]
     socket_connect_timeout: Dict[Literal['connect_timeout'], Callable[[Any], int]]
 
@@ -157,7 +157,7 @@ TIMEOUT_OPTIONS_TRANSFORMS: TimeoutOptionsTransforms = {
     'dispatch_timeout': {'dispatch_timeout': timedelta_as_microseconds},
     'dns_srv_timeout': {'dns_srv_timeout': timedelta_as_microseconds},
     'management_timeout': {'management_timeout': timedelta_as_microseconds},
-    'query_timeout': {'analytics_timeout': timedelta_as_microseconds},
+    'query_timeout': {'query_timeout': timedelta_as_microseconds},
     'resolve_timeout': {'resolve_timeout': timedelta_as_microseconds},
     'socket_connect_timeout': {'connect_timeout': timedelta_as_microseconds},
 }

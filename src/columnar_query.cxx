@@ -137,8 +137,6 @@ build_query_options(PyObject* pyObj_query_args)
   if (nullptr != pyObj_timeout) {
     // comes in as microseconds
     options.timeout = std::chrono::milliseconds(PyLong_AsUnsignedLongLong(pyObj_timeout) / 1000ULL);
-  } else {
-    options.timeout = couchbase::core::timeout_defaults::analytics_timeout;
   }
 
   PyObject* pyObj_raw = PyDict_GetItemString(pyObj_query_args, "raw");

@@ -205,13 +205,13 @@ struct connection {
   std::list<std::thread> io_threads_;
 
   connection()
-    : connection{ 1 }
+    : connection{ 1, {} }
   {
   }
 
-  connection(int num_io_threads)
+  connection(int num_io_threads, couchbase::core::columnar::timeout_config timeouts)
     : cluster_(couchbase::core::cluster(io_))
-    , agent_(couchbase::core::columnar::agent(io_, { { cluster_ } }))
+    , agent_(couchbase::core::columnar::agent(io_, { { cluster_ }, std::move(timeouts) }))
   {
     for (int i = 0; i < num_io_threads; i++) {
       // TODO: consider maybe catching exceptions and running run() again?  For now, lets
