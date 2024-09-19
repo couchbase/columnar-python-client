@@ -203,7 +203,7 @@ class ClusterOptionsTestSuite:
                               ({'management_timeout': timedelta(seconds=30)},
                                {'management_timeout': 30000000}),
                               ({'query_timeout': timedelta(seconds=30)},
-                               {'analytics_timeout': 30000000}),
+                               {'query_timeout': 30000000}),
                               ({'resolve_timeout': timedelta(seconds=30)},
                                {'resolve_timeout': 30000000}),
                               ({'socket_connect_timeout': timedelta(seconds=30)},
@@ -212,8 +212,8 @@ class ClusterOptionsTestSuite:
                                 'dispatch_timeout': timedelta(seconds=5),
                                 'query_timeout': timedelta(seconds=30)},
                                {'bootstrap_timeout': 60000000,
-                               'dispatch_timeout': 5000000,
-                                'analytics_timeout': 30000000}),
+                                'dispatch_timeout': 5000000,
+                                'query_timeout': 30000000}),
                               ])
     def test_timeout_options(self, opts: Dict[str, object], expected_opts: Dict[str, object]) -> None:
         cred = Credential.from_username_and_password('Administrator', 'password')
@@ -232,7 +232,7 @@ class ClusterOptionsTestSuite:
                               ({'management_timeout': timedelta(seconds=30)},
                                {'management_timeout': 30000000}),
                               ({'query_timeout': timedelta(seconds=30)},
-                               {'analytics_timeout': 30000000}),
+                               {'query_timeout': 30000000}),
                               ({'resolve_timeout': timedelta(seconds=30)},
                                {'resolve_timeout': 30000000}),
                               ({'socket_connect_timeout': timedelta(seconds=30)},
@@ -241,8 +241,8 @@ class ClusterOptionsTestSuite:
                                 'dispatch_timeout': timedelta(seconds=5),
                                 'query_timeout': timedelta(seconds=30)},
                                {'bootstrap_timeout': 60000000,
-                               'dispatch_timeout': 5000000,
-                                'analytics_timeout': 30000000}),
+                                'dispatch_timeout': 5000000,
+                                'query_timeout': 30000000}),
                               ])
     def test_timeout_options_kwargs(self, opts: Dict[str, object], expected_opts: Dict[str, object]) -> None:
         cred = Credential.from_username_and_password('Administrator', 'password')

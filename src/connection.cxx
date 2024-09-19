@@ -177,6 +177,7 @@ get_cluster_credentials(PyObject* pyObj_credentials)
 
 void
 update_cluster_timeout_options(couchbase::core::cluster_options& options,
+                               couchbase::core::columnar::timeout_config& timeouts,
                                PyObject* pyObj_timeout_opts)
 {
   PyObject* pyObj_bootstrap_timeout = PyDict_GetItemString(pyObj_timeout_opts, "bootstrap_timeout");
@@ -211,15 +212,7 @@ update_cluster_timeout_options(couchbase::core::cluster_options& options,
     options.connect_timeout = connect_timeout_ms;
   }
 
-  PyObject* pyObj_analytics_timeout = PyDict_GetItemString(pyObj_timeout_opts, "analytics_timeout");
-  if (pyObj_analytics_timeout != nullptr) {
-    auto analytics_timeout =
-      static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_analytics_timeout));
-    auto analytics_timeout_ms =
-      std::chrono::milliseconds(std::max(0ULL, analytics_timeout / 1000ULL));
-    options.analytics_timeout = analytics_timeout_ms;
-  }
-
+  // TODO: Update this to set management_timeout in timeout_config instead, once C++ core is updated
   PyObject* pyObj_management_timeout =
     PyDict_GetItemString(pyObj_timeout_opts, "management_timeout");
   if (pyObj_management_timeout != nullptr) {
@@ -228,6 +221,14 @@ update_cluster_timeout_options(couchbase::core::cluster_options& options,
     auto management_timeout_ms =
       std::chrono::milliseconds(std::max(0ULL, management_timeout / 1000ULL));
     options.management_timeout = management_timeout_ms;
+  }
+
+  // query_timeout should be set in the Columnar Agent's timeout_config
+  PyObject* pyObj_query_timeout = PyDict_GetItemString(pyObj_timeout_opts, "query_timeout");
+  if (pyObj_query_timeout != nullptr) {
+    auto query_timeout = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_query_timeout));
+    auto query_timeout_ms = std::chrono::milliseconds(std::max(0ULL, query_timeout / 1000ULL));
+    timeouts.query_timeout = query_timeout_ms;
   }
 }
 
@@ -317,11 +318,13 @@ update_cluster_security_options(couchbase::core::cluster_options& options,
 }
 
 void
-update_cluster_options(couchbase::core::cluster_options& options, PyObject* pyObj_options)
+update_cluster_options(couchbase::core::cluster_options& options,
+                       couchbase::core::columnar::timeout_config& timeouts,
+                       PyObject* pyObj_options)
 {
   PyObject* pyObj_timeout_opts = PyDict_GetItemString(pyObj_options, "timeout_options");
   if (pyObj_timeout_opts != nullptr) {
-    update_cluster_timeout_options(options, pyObj_timeout_opts);
+    update_cluster_timeout_options(options, timeouts, pyObj_timeout_opts);
   }
 
   PyObject* pyObj_security_opts = PyDict_GetItemString(pyObj_options, "security_options");
@@ -446,8 +449,11 @@ handle_create_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObje
   couchbase::core::utils::connection_string connection_str =
     couchbase::core::utils::parse_connection_string(conn_str);
   couchbase::core::cluster_credentials auth = get_cluster_credentials(pyObj_credential);
+
+  couchbase::core::columnar::timeout_config timeouts;
+
   try {
-    update_cluster_options(connection_str.options, pyObj_options);
+    update_cluster_options(connection_str.options, timeouts, pyObj_options);
   } catch (const std::invalid_argument& e) {
     pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, e.what());
     return nullptr;
@@ -462,7 +468,7 @@ handle_create_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObje
     num_io_threads = static_cast<uint32_t>(PyLong_AsUnsignedLong(pyObj_num_io_threads));
   }
 
-  connection* const conn = new connection(num_io_threads);
+  connection* const conn = new connection(num_io_threads, timeouts);
   PyObject* pyObj_conn = PyCapsule_New(conn, "conn_", dealloc_conn);
 
   if (pyObj_conn == nullptr) {
@@ -536,14 +542,6 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
   int_msec = opts.connect_timeout;
   pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
   if (-1 == PyDict_SetItemString(pyObj_opts, "connect_timeout", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  int_msec = opts.analytics_timeout;
-  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "analytics_timeout", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
