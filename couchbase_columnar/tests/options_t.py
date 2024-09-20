@@ -49,6 +49,8 @@ class ClusterOptionsTestSuite:
         'test_security_options_kwargs',
         'test_timeout_options',
         'test_timeout_options_kwargs',
+        'test_timeout_options_must_be_positive',
+        'test_timeout_options_must_be_positive_kwargs',
     ]
 
     @pytest.mark.parametrize('opts, expected_opts',
@@ -248,6 +250,34 @@ class ClusterOptionsTestSuite:
         cred = Credential.from_username_and_password('Administrator', 'password')
         client = _ClientAdapter('couchbases://localhost', cred, **opts)
         assert expected_opts == client.connection_details.cluster_options.get('timeout_options')
+
+    @pytest.mark.parametrize('opts',
+                             [{'connect_timeout': timedelta(seconds=-1)},
+                              {'dispatch_timeout': timedelta(seconds=-1)},
+                              {'dns_srv_timeout': timedelta(seconds=-1)},
+                              {'management_timeout': timedelta(seconds=-1)},
+                              {'query_timeout': timedelta(seconds=-1)},
+                              {'resolve_timeout': timedelta(seconds=-1)},
+                              {'socket_connect_timeout': timedelta(seconds=-1)}])
+    def test_timeout_options_must_be_positive(self, opts: Dict[str, object]) -> None:
+        cred = Credential.from_username_and_password('Administrator', 'password')
+        with pytest.raises(ValueError):
+            _ClientAdapter('couchbases://localhost',
+                           cred,
+                           ClusterOptions(timeout_options=TimeoutOptions(**opts)))
+
+    @pytest.mark.parametrize('opts',
+                             [{'connect_timeout': timedelta(seconds=-1)},
+                              {'dispatch_timeout': timedelta(seconds=-1)},
+                              {'dns_srv_timeout': timedelta(seconds=-1)},
+                              {'management_timeout': timedelta(seconds=-1)},
+                              {'query_timeout': timedelta(seconds=-1)},
+                              {'resolve_timeout': timedelta(seconds=-1)},
+                              {'socket_connect_timeout': timedelta(seconds=-1)}])
+    def test_timeout_options_must_be_positive_kwargs(self, opts: Dict[str, object]) -> None:
+        cred = Credential.from_username_and_password('Administrator', 'password')
+        with pytest.raises(ValueError):
+            _ClientAdapter('couchbases://localhost', cred, **opts)
 
 
 class ClusterOptionsTests(ClusterOptionsTestSuite):
