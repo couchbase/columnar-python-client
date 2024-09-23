@@ -223,5 +223,5 @@ struct pycbcc_logger {
   PyObject_HEAD std::shared_ptr<pycbcc_logger_sink> logger_sink_;
 };
 
-int
-pycbcc_logger_type_init(PyObject** ptr);
+PyObject*
+add_logger_objects(PyObject* pyObj_module);

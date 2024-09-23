@@ -19,8 +19,6 @@
 
 #include "exceptions.hxx"
 
-PyTypeObject pycbcc_logger_type = { PyObject_HEAD_INIT(NULL) 0 };
-
 static void
 pycbcc_logger_dealloc(pycbcc_logger* self)
 {
@@ -138,32 +136,28 @@ static PyMethodDef pycbcc_logger_methods[] = {
 };
 
 static PyObject*
-pycbcc_logger_new(PyTypeObject* type, PyObject*, PyObject*)
+pycbcc_logger__new__(PyTypeObject* type, PyObject*, PyObject*)
 {
   pycbcc_logger* self = reinterpret_cast<pycbcc_logger*>(type->tp_alloc(type, 0));
   return reinterpret_cast<PyObject*>(self);
 }
 
-int
-pycbcc_logger_type_init(PyObject** ptr)
+static PyTypeObject
+init_pycbcc_logger_type()
 {
-  PyTypeObject* p = &pycbcc_logger_type;
-
-  *ptr = (PyObject*)p;
-  if (p->tp_name) {
-    return 0;
-  }
-
-  p->tp_name = "pycbcc_core.pycbcc_logger";
-  p->tp_doc = "Python SDK Logger";
-  p->tp_basicsize = sizeof(pycbcc_logger);
-  p->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-  p->tp_new = pycbcc_logger_new;
-  p->tp_dealloc = (destructor)pycbcc_logger_dealloc;
-  p->tp_methods = pycbcc_logger_methods;
-
-  return PyType_Ready(p);
+  PyTypeObject obj = {};
+  obj.ob_base = PyVarObject_HEAD_INIT(NULL, 0) obj.tp_name = "pycbcc_core.pycbcc_logger";
+  obj.tp_doc = PyDoc_STR("Python Columnar SDK Logger");
+  obj.tp_basicsize = sizeof(pycbcc_logger);
+  obj.tp_itemsize = 0;
+  obj.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+  obj.tp_new = pycbcc_logger__new__;
+  obj.tp_dealloc = (destructor)pycbcc_logger_dealloc;
+  obj.tp_methods = pycbcc_logger_methods;
+  return obj;
 }
+
+static PyTypeObject pycbcc_logger_type = init_pycbcc_logger_type();
 
 size_t
 convert_spdlog_level(spdlog::level::level_enum lvl)
@@ -211,4 +205,19 @@ convert_python_log_level(PyObject* level)
     default:
       return couchbase::core::logger::level::off;
   }
+}
+
+PyObject*
+add_logger_objects(PyObject* pyObj_module)
+{
+  if (PyType_Ready(&pycbcc_logger_type) < 0) {
+    return nullptr;
+  }
+  Py_INCREF(&pycbcc_logger_type);
+  if (PyModule_AddObject(
+        pyObj_module, "pycbcc_logger", reinterpret_cast<PyObject*>(&pycbcc_logger_type)) < 0) {
+    Py_DECREF(&pycbcc_logger_type);
+    return nullptr;
+  }
+  return pyObj_module;
 }

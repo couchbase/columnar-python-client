@@ -31,7 +31,7 @@ result_dealloc([[maybe_unused]] result* self)
     PyDict_Clear(self->dict);
     Py_DECREF(self->dict);
   }
-  // CB_LOG_DEBUG("pycbc - dealloc result: result->refcnt: {}, result->dict->refcnt: {}",
+  // CB_LOG_DEBUG("pycbcc - dealloc result: result->refcnt: {}, result->dict->refcnt: {}",
   // Py_REFCNT(self), Py_REFCNT(self->dict));
   Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -91,36 +91,30 @@ result__new__(PyTypeObject* type, PyObject*, PyObject*)
   return reinterpret_cast<PyObject*>(self);
 }
 
-int
-pycbcc_result_type_init(PyObject** ptr)
+static PyTypeObject
+init_result_type()
 {
-  PyTypeObject* p = &result_type;
-
-  *ptr = (PyObject*)p;
-  if (p->tp_name) {
-    return 0;
-  }
-
-  p->tp_name = "pycbcc_core.result";
-  p->tp_doc = "Result of operation on client";
-  p->tp_basicsize = sizeof(result);
-  p->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-  p->tp_new = result__new__;
-  p->tp_dealloc = (destructor)result_dealloc;
-  p->tp_methods = result_methods;
-  p->tp_members = result_members;
-  p->tp_repr = (reprfunc)result__str__;
-
-  return PyType_Ready(p);
+  PyTypeObject obj = {};
+  obj.ob_base = PyVarObject_HEAD_INIT(NULL, 0) obj.tp_name = "pycbcc_core.result";
+  obj.tp_doc = PyDoc_STR("Result of operation on client");
+  obj.tp_basicsize = sizeof(result);
+  obj.tp_itemsize = 0;
+  obj.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+  obj.tp_new = result__new__;
+  obj.tp_dealloc = (destructor)result_dealloc;
+  obj.tp_methods = result_methods;
+  obj.tp_members = result_members;
+  obj.tp_repr = (reprfunc)result__str__;
+  return obj;
 }
+
+static PyTypeObject result_type = init_result_type();
 
 PyObject*
 create_result_obj()
 {
   return PyObject_CallObject(reinterpret_cast<PyObject*>(&result_type), nullptr);
 }
-
-PyTypeObject result_type = { PyObject_HEAD_INIT(NULL) 0 };
 
 /* columnar_query_iterator type methods */
 
@@ -397,35 +391,31 @@ columnar_query_iterator_iternext(PyObject* self)
 }
 
 static PyObject*
-columnar_query_iterator_new(PyTypeObject* type, PyObject*, PyObject*)
+columnar_query_iterator__new__(PyTypeObject* type, PyObject*, PyObject*)
 {
   columnar_query_iterator* self =
     reinterpret_cast<columnar_query_iterator*>(type->tp_alloc(type, 0));
   return reinterpret_cast<PyObject*>(self);
 }
 
-int
-pycbcc_columnar_query_iterator_type_init(PyObject** ptr)
+static PyTypeObject
+init_columnar_query_iterator_type()
 {
-  PyTypeObject* p = &columnar_query_iterator_type;
-
-  *ptr = (PyObject*)p;
-  if (p->tp_name) {
-    return 0;
-  }
-
-  p->tp_name = "pycbcc_core.columnar_query_iterator";
-  p->tp_doc = "Result of Columnar query operation on client";
-  p->tp_basicsize = sizeof(columnar_query_iterator);
-  p->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-  p->tp_new = columnar_query_iterator_new;
-  p->tp_dealloc = (destructor)columnar_query_iterator_dealloc;
-  p->tp_methods = columnar_query_iterator_TABLE_methods;
-  p->tp_iter = columnar_query_iterator_iter;
-  p->tp_iternext = columnar_query_iterator_iternext;
-
-  return PyType_Ready(p);
+  PyTypeObject obj = {};
+  obj.ob_base = PyVarObject_HEAD_INIT(NULL, 0) obj.tp_name = "pycbcc_core.columnar_query_iterator";
+  obj.tp_doc = PyDoc_STR("Result of Columnar query operation on client");
+  obj.tp_basicsize = sizeof(columnar_query_iterator);
+  obj.tp_itemsize = 0;
+  obj.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+  obj.tp_new = columnar_query_iterator__new__;
+  obj.tp_dealloc = (destructor)columnar_query_iterator_dealloc;
+  obj.tp_methods = columnar_query_iterator_TABLE_methods;
+  obj.tp_iter = columnar_query_iterator_iter;
+  obj.tp_iternext = columnar_query_iterator_iternext;
+  return obj;
 }
+
+static PyTypeObject columnar_query_iterator_type = init_columnar_query_iterator_type();
 
 PyObject*
 create_columnar_query_iterator_obj(PyObject* pyObj_row_callback)
@@ -439,4 +429,32 @@ create_columnar_query_iterator_obj(PyObject* pyObj_row_callback)
   return reinterpret_cast<PyObject*>(query_iter);
 }
 
-PyTypeObject columnar_query_iterator_type = { PyObject_HEAD_INIT(NULL) 0 };
+PyObject*
+add_result_objects(PyObject* pyObj_module)
+{
+  // result_type, need to DECREF previous types on failure
+  if (PyType_Ready(&result_type) < 0) {
+    return nullptr;
+  }
+  Py_INCREF(&result_type);
+  if (PyModule_AddObject(pyObj_module, "result", reinterpret_cast<PyObject*>(&result_type)) < 0) {
+    Py_DECREF(&result_type);
+    return nullptr;
+  }
+
+  // columnar_query_iterator_type, need to DECREF previous types on failure
+  if (PyType_Ready(&columnar_query_iterator_type) < 0) {
+    Py_DECREF(&result_type);
+    return nullptr;
+  }
+  Py_INCREF(&columnar_query_iterator_type);
+  if (PyModule_AddObject(pyObj_module,
+                         "columnar_query_iterator",
+                         reinterpret_cast<PyObject*>(&columnar_query_iterator_type)) < 0) {
+    Py_DECREF(&result_type);
+    Py_DECREF(&columnar_query_iterator_type);
+    return nullptr;
+  }
+
+  return pyObj_module;
+}

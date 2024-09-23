@@ -199,57 +199,22 @@ PyMODINIT_FUNC
 PyInit_pycbcc_core(void)
 {
   Py_Initialize();
-  PyObject* m = nullptr;
-
-  PyObject* result_type;
-  if (pycbcc_result_type_init(&result_type) < 0) {
-    return nullptr;
-  }
-
-  PyObject* core_error_type;
-  if (pycbcc_core_error_type_init(&core_error_type) < 0) {
-    return nullptr;
-  }
-
-  PyObject* columnar_query_iterator_type;
-  if (pycbcc_columnar_query_iterator_type_init(&columnar_query_iterator_type) < 0) {
-    return nullptr;
-  }
-
-  PyObject* pycbcc_logger_type;
-  if (pycbcc_logger_type_init(&pycbcc_logger_type) < 0) {
-    return nullptr;
-  }
-
-  m = PyModule_Create(&pycbcc_core_module);
+  PyObject* m = PyModule_Create(&pycbcc_core_module);
   if (m == nullptr) {
     return nullptr;
   }
 
-  Py_INCREF(result_type);
-  if (PyModule_AddObject(m, "result", result_type) < 0) {
-    Py_DECREF(result_type);
+  if (add_result_objects(m) == nullptr) {
     Py_DECREF(m);
     return nullptr;
   }
 
-  Py_INCREF(core_error_type);
-  if (PyModule_AddObject(m, "core_error", core_error_type) < 0) {
-    Py_DECREF(core_error_type);
+  if (add_exception_objects(m) == nullptr) {
     Py_DECREF(m);
     return nullptr;
   }
 
-  Py_INCREF(columnar_query_iterator_type);
-  if (PyModule_AddObject(m, "columnar_query_iterator", columnar_query_iterator_type) < 0) {
-    Py_DECREF(columnar_query_iterator_type);
-    Py_DECREF(m);
-    return nullptr;
-  }
-
-  Py_INCREF(pycbcc_logger_type);
-  if (PyModule_AddObject(m, "pycbcc_logger", pycbcc_logger_type) < 0) {
-    Py_DECREF(pycbcc_logger_type);
+  if (add_logger_objects(m) == nullptr) {
     Py_DECREF(m);
     return nullptr;
   }

@@ -37,7 +37,7 @@ core_error_dealloc(core_error* self)
     Py_DECREF(self->error_details);
   }
   Py_TYPE(self)->tp_free((PyObject*)self);
-  CB_LOG_DEBUG("{}: core_error_dealloc completed", "PYCBC");
+  CB_LOG_DEBUG("{}: core_error_dealloc completed", "PYCBCC");
 }
 
 static PyObject*
@@ -54,36 +54,30 @@ static PyMethodDef core_error_methods[] = { { "error_details",
                                               PyDoc_STR("Core error details") },
                                             { nullptr, nullptr, 0, nullptr } };
 
-int
-pycbcc_core_error_type_init(PyObject** ptr)
+static PyTypeObject
+init_pycbcc_core_error_type()
 {
-  PyTypeObject* p = &core_error_type;
-
-  *ptr = (PyObject*)p;
-  if (p->tp_name) {
-    return 0;
-  }
-
-  p->tp_name = "pycbcc_core.core_error";
-  p->tp_doc = "Base class for exceptions coming from pycbcc_core";
-  p->tp_basicsize = sizeof(core_error);
-  p->tp_itemsize = 0;
-  p->tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
-  p->tp_new = core_error__new__;
-  p->tp_dealloc = (destructor)core_error_dealloc;
-  p->tp_methods = core_error_methods;
-
-  return PyType_Ready(p);
+  PyTypeObject obj = {};
+  obj.ob_base = PyVarObject_HEAD_INIT(NULL, 0) obj.tp_name = "pycbcc_core.core_error";
+  obj.tp_doc = PyDoc_STR("Base class for exceptions coming from pycbcc_core");
+  obj.tp_basicsize = sizeof(core_error);
+  obj.tp_itemsize = 0;
+  obj.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
+  obj.tp_new = core_error__new__;
+  obj.tp_dealloc = (destructor)core_error_dealloc;
+  obj.tp_methods = core_error_methods;
+  return obj;
 }
+
+static PyTypeObject pycbcc_core_error_type = init_pycbcc_core_error_type();
 
 core_error*
 create_core_error_obj()
 {
-  PyObject* err = PyObject_CallObject(reinterpret_cast<PyObject*>(&core_error_type), nullptr);
+  PyObject* err =
+    PyObject_CallObject(reinterpret_cast<PyObject*>(&pycbcc_core_error_type), nullptr);
   return reinterpret_cast<core_error*>(err);
 }
-
-PyTypeObject core_error_type = { PyObject_HEAD_INIT(NULL) 0 };
 
 PyObject*
 get_core_error_instance(core_error* core_err)
@@ -494,4 +488,19 @@ build_exception([[maybe_unused]] PyObject* self, PyObject* args)
   }
 
   Py_RETURN_NONE;
+}
+
+PyObject*
+add_exception_objects(PyObject* pyObj_module)
+{
+  if (PyType_Ready(&pycbcc_core_error_type) < 0) {
+    return nullptr;
+  }
+  Py_INCREF(&pycbcc_core_error_type);
+  if (PyModule_AddObject(
+        pyObj_module, "core_error", reinterpret_cast<PyObject*>(&pycbcc_core_error_type)) < 0) {
+    Py_DECREF(&pycbcc_core_error_type);
+    return nullptr;
+  }
+  return pyObj_module;
 }

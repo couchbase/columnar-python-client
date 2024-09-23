@@ -306,11 +306,9 @@ handle_columnar_query([[maybe_unused]] PyObject* self, PyObject* args, PyObject*
   if (PyErr_Occurred()) {
     return nullptr;
   }
-
   Py_XINCREF(pyObj_callback);
   Py_XINCREF(pyObj_row_callback);
 
-  couchbase::core::columnar::agent agent{ conn->io_, { { conn->cluster_ } } };
   tl::expected<std::shared_ptr<couchbase::core::pending_operation>,
                couchbase::core::columnar::error>
     resp;

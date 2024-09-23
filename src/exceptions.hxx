@@ -77,9 +77,6 @@ struct core_error {
   PyObject_HEAD PyObject* error_details = nullptr;
 };
 
-int
-pycbcc_core_error_type_init(PyObject** ptr);
-
 core_error*
 create_core_error_obj();
 
@@ -104,3 +101,6 @@ pycbcc_set_python_exception(CoreClientErrors::ErrorCode client_error_code,
 
 PyObject*
 build_exception(PyObject* self, PyObject* args);
+
+PyObject*
+add_exception_objects(PyObject* pyObj_module);
