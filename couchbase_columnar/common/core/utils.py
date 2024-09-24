@@ -40,6 +40,8 @@ def is_null_or_empty(value: Optional[str]) -> bool:
 def timedelta_as_microseconds(duration: timedelta) -> int:
     if duration and not isinstance(duration, timedelta):
         raise ValueError(f"Expected timedelta instead of {duration}")
+    if duration.total_seconds() < 0:
+        raise ValueError('Timeout must be non-negative.')
     return int(duration.total_seconds() * 1e6 if duration else 0)
 
 
@@ -49,8 +51,12 @@ def to_microseconds(value: Union[timedelta, float, int]) -> int:
     if not value:
         total_us = 0
     elif isinstance(value, timedelta):
+        if value.total_seconds() < 0:
+            raise ValueError('Timeout must be non-negative.')
         total_us = int(value.total_seconds() * 1e6)
     else:
+        if value < 0:
+            raise ValueError('Timeout must be non-negative.')
         total_us = int(value * 1e6)
 
     return total_us

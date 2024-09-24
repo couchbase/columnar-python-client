@@ -54,7 +54,9 @@ class QueryOptionsTestSuite:
         'test_options_scan_consistency',
         'test_options_scan_consistency_kwargs',
         'test_options_timeout',
-        'test_options_timeout_kwargs'
+        'test_options_timeout_kwargs',
+        'test_options_timeout_must_be_positive',
+        'test_options_timeout_must_be_positive_kwargs'
     ]
 
     @pytest.fixture(scope='class')
@@ -276,6 +278,22 @@ class QueryOptionsTestSuite:
         assert req.options == exp_opts
         assert req.database_name == query_ctx.database_name
         assert req.scope_name == query_ctx.scope_name
+
+    def test_options_timeout_must_be_positive(self,
+                                              query_statment: str,
+                                              request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder]
+                                              ) -> None:
+        q_opts = QueryOptions(timeout=timedelta(seconds=-1))
+        with pytest.raises(ValueError):
+            request_builder.build_query_request(query_statment, q_opts)
+
+    def test_options_timeout_must_be_positive_kwargs(self,
+                                                     query_statment: str,
+                                                     request_builder: Union[ClusterRequestBuilder, ScopeRequestBuilder]
+                                                     ) -> None:
+        kwargs = {'timeout': timedelta(seconds=-1)}
+        with pytest.raises(ValueError):
+            request_builder.build_query_request(query_statment, **kwargs)
 
 
 class ClusterQueryOptionsTests(QueryOptionsTestSuite):
