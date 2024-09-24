@@ -46,7 +46,10 @@ class ClusterOptionsTestSuite:
         'test_options_deserializer',
         'test_options_deserializer_kwargs',
         'test_security_options',
+        'test_security_options_classmethods',
         'test_security_options_kwargs',
+        'test_security_options_invalid',
+        'test_security_options_invalid_kwargs',
         'test_timeout_options',
         'test_timeout_options_kwargs',
         'test_timeout_options_must_be_positive',
@@ -149,13 +152,19 @@ class ClusterOptionsTestSuite:
                               ({'trust_only_capella': True},
                                {'trust_only_capella': True}),
                               ({'trust_only_pem_file': CONFIG_FILE},
-                               {'trust_only_pem_file': CONFIG_FILE}),
+                               {'trust_only_pem_file': CONFIG_FILE,
+                                'trust_only_capella': False}),
                               ({'trust_only_pem_str': 'BEGIN CERTIFICATIE...'},
-                               {'trust_only_pem_str': 'BEGIN CERTIFICATIE...'}),
+                               {'trust_only_pem_str': 'BEGIN CERTIFICATIE...',
+                                'trust_only_capella': False}),
                               ({'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...']},
-                               {'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...']}),
+                               {'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...'],
+                                'trust_only_capella': False}),
                               ({'verify_server_certificate': False},
                                {'verify_server_certificate': False}),
+                              ({'trust_only_platform': True},
+                               {'trust_only_platform': True,
+                                'trust_only_capella': False}),
                               ({'cipher_suites': ['TLS_AES_256_GCM_SHA384',
                                                   'TLS_CHACHA20_POLY1305_SHA256',
                                                   'TLS_AES_128_GCM_SHA256']},
@@ -171,17 +180,47 @@ class ClusterOptionsTestSuite:
         assert expected_opts == client.connection_details.cluster_options.get('security_options')
 
     @pytest.mark.parametrize('opts, expected_opts',
+                             [(SecurityOptions.trust_only_capella(),
+                               {'trust_only_capella': True}),
+                              (SecurityOptions.trust_only_pem_file(CONFIG_FILE),
+                               {'trust_only_pem_file': CONFIG_FILE,
+                                'trust_only_capella': False}),
+                              (SecurityOptions.trust_only_pem_str('BEGIN CERTIFICATIE...'),
+                               {'trust_only_pem_str': 'BEGIN CERTIFICATIE...',
+                                'trust_only_capella': False}),
+                              (SecurityOptions.trust_only_certificates(['BEGIN CERTIFICATIE...',
+                                                                        'BEGIN CERTIFICATIE...']),
+                               {'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...'],
+                                'trust_only_capella': False}),
+                              (SecurityOptions.trust_only_platform(),
+                               {'trust_only_platform': True,
+                                'trust_only_capella': False}),
+                              ])
+    def test_security_options_classmethods(self, opts: SecurityOptions, expected_opts: Dict[str, object]) -> None:
+        cred = Credential.from_username_and_password('Administrator', 'password')
+        client = _ClientAdapter('couchbases://localhost',
+                                cred,
+                                ClusterOptions(security_options=opts))
+        assert expected_opts == client.connection_details.cluster_options.get('security_options')
+
+    @pytest.mark.parametrize('opts, expected_opts',
                              [({}, None),
                               ({'trust_only_capella': True},
                                {'trust_only_capella': True}),
                               ({'trust_only_pem_file': CONFIG_FILE},
-                               {'trust_only_pem_file': CONFIG_FILE}),
+                               {'trust_only_pem_file': CONFIG_FILE,
+                                'trust_only_capella': False}),
                               ({'trust_only_pem_str': 'BEGIN CERTIFICATIE...'},
-                               {'trust_only_pem_str': 'BEGIN CERTIFICATIE...'}),
+                               {'trust_only_pem_str': 'BEGIN CERTIFICATIE...',
+                                'trust_only_capella': False}),
                               ({'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...']},
-                               {'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...']}),
+                               {'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...'],
+                                'trust_only_capella': False}),
                               ({'verify_server_certificate': False},
                                {'verify_server_certificate': False}),
+                              ({'trust_only_platform': True},
+                               {'trust_only_platform': True,
+                                'trust_only_capella': False}),
                               ({'cipher_suites': ['TLS_AES_256_GCM_SHA384',
                                                   'TLS_CHACHA20_POLY1305_SHA256',
                                                   'TLS_AES_128_GCM_SHA256']},
@@ -193,6 +232,38 @@ class ClusterOptionsTestSuite:
         cred = Credential.from_username_and_password('Administrator', 'password')
         client = _ClientAdapter('couchbases://localhost', cred, **opts)
         assert expected_opts == client.connection_details.cluster_options.get('security_options')
+
+    @pytest.mark.parametrize('opts',
+                             [{'trust_only_capella': True,
+                               'trust_only_pem_file': CONFIG_FILE},
+                              {'trust_only_capella': True,
+                               'trust_only_pem_str': 'BEGIN CERTIFICATIE...'},
+                              {'trust_only_capella': True,
+                               'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...']},
+                              {'trust_only_capella': True,
+                               'trust_only_platform': True},
+                              ])
+    def test_security_options_invalid(self, opts: Dict[str, object]) -> None:
+        cred = Credential.from_username_and_password('Administrator', 'password')
+        with pytest.raises(ValueError):
+            _ClientAdapter('couchbases://localhost',
+                           cred,
+                           ClusterOptions(security_options=SecurityOptions(**opts)))
+
+    @pytest.mark.parametrize('opts',
+                             [{'trust_only_capella': True,
+                               'trust_only_pem_file': CONFIG_FILE},
+                              {'trust_only_capella': True,
+                               'trust_only_pem_str': 'BEGIN CERTIFICATIE...'},
+                              {'trust_only_capella': True,
+                               'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...']},
+                              {'trust_only_capella': True,
+                               'trust_only_platform': True},
+                              ])
+    def test_security_options_invalid_kwargs(self, opts: Dict[str, object]) -> None:
+        cred = Credential.from_username_and_password('Administrator', 'password')
+        with pytest.raises(ValueError):
+            _ClientAdapter('couchbases://localhost', cred, **opts)
 
     @pytest.mark.parametrize('opts, expected_opts',
                              [({}, None),

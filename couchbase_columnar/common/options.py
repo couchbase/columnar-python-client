@@ -143,7 +143,7 @@ class SecurityOptions(SecurityOptionsBase):
         Returns:
             :class:`~couchbase_columnar.common.options.SecurityOptions`
         """  # noqa: E501
-        return cls(trust_only_pem_file=pem_file)
+        return cls(trust_only_capella=False, trust_only_pem_file=pem_file)
 
     @classmethod
     def trust_only_pem_str(cls, pem_str: str) -> SecurityOptions:
@@ -156,7 +156,7 @@ class SecurityOptions(SecurityOptionsBase):
         Returns:
             :class:`~couchbase_columnar.common.options.SecurityOptions`
         """  # noqa: E501
-        return cls(trust_only_pem_str=pem_str)
+        return cls(trust_only_capella=False, trust_only_pem_str=pem_str)
 
     @classmethod
     def trust_only_certificates(cls, certificates: List[str]) -> SecurityOptions:
@@ -169,7 +169,7 @@ class SecurityOptions(SecurityOptionsBase):
         Returns:
             :class:`~couchbase_columnar.common.options.SecurityOptions`
         """  # noqa: E501
-        return cls(trust_only_certificates=certificates)
+        return cls(trust_only_capella=False, trust_only_certificates=certificates)
 
     @classmethod
     def trust_only_platform(cls) -> SecurityOptions:
@@ -179,7 +179,7 @@ class SecurityOptions(SecurityOptionsBase):
         Returns:
             :class:`~couchbase_columnar.common.options.SecurityOptions`
         """
-        return cls(trust_only_platform=True)
+        return cls(trust_only_capella=False, trust_only_platform=True)
 
 
 class TimeoutOptions(TimeoutOptionsBase):
