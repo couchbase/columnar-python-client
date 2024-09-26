@@ -24,7 +24,7 @@ from typing import (TYPE_CHECKING,
                     TypedDict)
 from urllib.parse import parse_qs, urlparse
 
-from couchbase_columnar.common.core.utils import is_null_or_empty, to_query_str
+from couchbase_columnar.common.core.utils import to_query_str
 from couchbase_columnar.common.credential import Credential
 from couchbase_columnar.common.deserializer import DefaultJsonDeserializer, Deserializer
 from couchbase_columnar.common.options import ClusterOptions
@@ -146,14 +146,26 @@ class _ConnectionDetails:
     default_deserializer: Deserializer
     enable_dns_srv: Optional[bool] = None
 
-    # TODO:  is this needed?  If so, need to flesh out the validation matrix
     def validate_security_options(self) -> None:
         security_opts: Optional[SecurityOptionsTransformedKwargs] = self.cluster_options.get('security_options')
-        if security_opts is not None and security_opts.get('trust_only_capella', False) is True:
-            if not (is_null_or_empty(security_opts.get('trust_only_pem_file', None))
-                    and is_null_or_empty(security_opts.get('trust_only_pem_str', None))
-                    and len(security_opts.get('trust_only_certificates') or []) == 0):
-                raise ValueError('Can only trust from Capella if trust_only_capella is True.')
+        if security_opts is None:
+            return
+
+        solo_security_opts = ['trust_only_pem_file',
+                              'trust_only_pem_str',
+                              'trust_only_certificates',
+                              'trust_only_platform']
+        security_opt_count = sum(map(lambda k: 1 if security_opts.get(k, None) is not None else 0, solo_security_opts))
+        trust_capella = security_opts.get('trust_only_capella', None)
+        if security_opt_count > 1 or (security_opt_count == 1 and trust_capella is True):
+            raise ValueError(('Can only set one of the following options: '
+                              f'[{", ".join(["trust_only_capella"] + solo_security_opts)}]'))
+
+        # we need to set trust_only_capella=False to override the default other security
+        # options that should not use the default
+        if any(map(lambda opt: security_opts.get(opt, None) is not None, solo_security_opts)):
+            if trust_capella is True or trust_capella is None:
+                security_opts['trust_only_capella'] = False
 
     @classmethod
     def create(cls,
