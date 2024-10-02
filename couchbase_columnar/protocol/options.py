@@ -60,7 +60,6 @@ QueryStrVal = Union[List[str], str, bool, int]
 
 
 class ClusterOptionsTransforms(TypedDict):
-    allow_unknown_qstr_options: Dict[Literal['allow_unknown_qstr_options'], Callable[[Any], bool]]
     config_poll_floor: Dict[Literal['config_poll_floor'], Callable[[Any], int]]
     config_poll_interval: Dict[Literal['config_poll_interval'], Callable[[Any], int]]
     deserializer: Dict[Literal['deserializer'], Callable[[Any], Deserializer]]
@@ -77,7 +76,6 @@ class ClusterOptionsTransforms(TypedDict):
 
 
 CLUSTER_OPTIONS_TRANSFORMS: ClusterOptionsTransforms = {
-    'allow_unknown_qstr_options': {'allow_unknown_qstr_options': VALIDATE_BOOL},
     'config_poll_floor': {'config_poll_floor': timedelta_as_microseconds},
     'config_poll_interval': {'config_poll_interval': timedelta_as_microseconds},
     'deserializer': {'deserializer': VALIDATE_DESERIALIZER},
@@ -95,7 +93,6 @@ CLUSTER_OPTIONS_TRANSFORMS: ClusterOptionsTransforms = {
 
 
 class ClusterOptionsTransformedKwargs(TypedDict, total=False):
-    allow_unknown_qstr_options: Optional[bool]
     config_poll_floor: Optional[int]
     config_poll_interval: Optional[int]
     deserializer: Optional[Deserializer]
@@ -117,8 +114,8 @@ class SecurityOptionsTransforms(TypedDict):
     trust_only_pem_str: Dict[Literal['trust_only_pem_str'], Callable[[Any], str]]
     trust_only_certificates: Dict[Literal['trust_only_certificates'], Callable[[Any], List[str]]]
     trust_only_platform: Dict[Literal['trust_only_platform'], Callable[[Any], bool]]
-    verify_server_certificate: Dict[Literal['verify_server_certificate'], Callable[[Any], bool]]
-    cipher_suites: Dict[Literal['cipher_suites'], Callable[[Any], List[str]]]
+    disable_server_certificate_verification: Dict[Literal['disable_server_certificate_verification'],
+                                                  Callable[[Any], bool]]
 
 
 SECURITY_OPTIONS_TRANSFORMS: SecurityOptionsTransforms = {
@@ -127,8 +124,7 @@ SECURITY_OPTIONS_TRANSFORMS: SecurityOptionsTransforms = {
     'trust_only_pem_str': {'trust_only_pem_str': VALIDATE_STR},
     'trust_only_certificates': {'trust_only_certificates': VALIDATE_STR_LIST},
     'trust_only_platform': {'trust_only_platform': VALIDATE_BOOL},
-    'verify_server_certificate': {'verify_server_certificate': VALIDATE_BOOL},
-    'cipher_suites': {'cipher_suites': VALIDATE_STR_LIST},
+    'disable_server_certificate_verification': {'disable_server_certificate_verification': VALIDATE_BOOL},
 }
 
 
@@ -138,8 +134,7 @@ class SecurityOptionsTransformedKwargs(TypedDict, total=False):
     trust_only_pem_str: Optional[str]
     trust_only_certificates: Optional[List[str]]
     trust_only_platform: Optional[bool]
-    verify_server_certificate: Optional[bool]
-    cipher_suites: Optional[List[str]]
+    disable_server_certificate_verification: Optional[bool]
 
 
 class TimeoutOptionsTransforms(TypedDict):
@@ -364,7 +359,6 @@ class OptionsBuilder:
                     if conv is not None:
                         transformed_opts[nk] = conv  # type: ignore[literal-required]
             elif keys_to_ignore and k not in keys_to_ignore:
-                # TODO:  exception??
-                print(f'Invalid key: {k}')
+                raise ValueError(f'Invalid key provided (key={k}).')
 
         return transformed_opts

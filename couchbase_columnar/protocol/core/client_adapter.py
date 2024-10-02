@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import sys
 from functools import wraps
-from typing import (Callable,
+from typing import (Any,
+                    Callable,
+                    Dict,
                     Literal,
                     Optional,
                     TypeVar,
@@ -71,6 +73,8 @@ class BlockingWrapper:
                     return return_cls(ret)
                 except (ColumnarError, InternalSDKError) as err:
                     raise err
+                except CoreColumnarError as err:
+                    raise ErrorMapper.build_error(err) from None
                 except Exception as ex:
                     raise InternalSDKError(str(ex))
 
@@ -168,6 +172,18 @@ class _ClientAdapter:
         """
         if hasattr(self, '_client'):
             del self._client
+
+    def _test_connect(self, req: ConnectRequest) -> Dict[str, Any]:
+        """
+            **INTERNAL**
+        """
+        if not hasattr(self, '_client'):
+            self._client = _CoreClient()
+
+        try:
+            return self.client._test_connect(req)
+        except CoreColumnarError as err:
+            raise ErrorMapper.build_error(err)
 
 
 InputWrappedFunc: TypeAlias = Callable[[_ClientAdapter, ReqT],

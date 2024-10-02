@@ -22,9 +22,11 @@ from typing import (TYPE_CHECKING,
                     Any,
                     Callable,
                     Dict,
+                    List,
                     Optional,
                     Tuple,
-                    Union)
+                    Union,
+                    cast)
 
 if sys.version_info < (3, 10):
     from typing_extensions import TypeAlias
@@ -54,10 +56,27 @@ class CloseConnectionRequest:
 class ConnectRequest:
     connection_str: str
     credential: Dict[str, str]
+    options_in_connstr: Dict[str, List[str]]
     options: Optional[ClusterOptionsTransformedKwargs] = None
     enable_dns_srv: Optional[bool] = None
+    dns_srv_timeout: Optional[str] = None
+
+    def _process_connstr_options(self) -> None:
+        if self.options is None:
+            return
+        # remove options that were passed in the connstr
+        if 'timeout_options' in self.options_in_connstr and len(self.options_in_connstr['timeout_options']) > 0:
+            opts = self.options.get('timeout_options', None)
+            if opts is not None:
+                for key in self.options_in_connstr['timeout_options']:
+                    cast(Dict[str, object], opts).pop(key, None)
+
+        if 'general_options' in self.options_in_connstr and len(self.options_in_connstr['general_options']) > 0:
+            for key in self.options_in_connstr['general_options']:
+                self.options.pop(key, None)  # type: ignore
 
     def to_req_dict(self) -> Dict[str, Any]:
+        self._process_connstr_options()
         req_dict = asdict(self)
         if self.enable_dns_srv is False:
             if 'options' not in req_dict:
@@ -65,6 +84,21 @@ class ConnectRequest:
             req_dict['options']['enable_dns_srv'] = req_dict.pop('enable_dns_srv')
         else:
             req_dict.pop('enable_dns_srv')
+        # dns_srv_timeout might be both options and options.timeout_options, in the bindings
+        # options value will take precedence.  This is what we want as dns_srv_timeout not in the
+        # timeout_options means user specified value in connection string param
+        if self.dns_srv_timeout is not None:
+            if 'options' not in req_dict:
+                req_dict['options'] = {}
+            req_dict['options']['dns_srv_timeout'] = req_dict.pop('dns_srv_timeout')
+        else:
+            req_dict.pop('dns_srv_timeout')
+
+        # we need to keep track of certain timeout options to make sure we set the in the
+        # agent's timeout_config correctly
+        connstr_opts = req_dict.pop('options_in_connstr')
+        if 'timeout_options' in connstr_opts and len(connstr_opts['timeout_options']) > 0:
+            req_dict['connstr_timeout_options'] = [k for k in connstr_opts['timeout_options'] if k in ['query_timeout']]
 
         return req_dict
 
@@ -116,8 +150,10 @@ class ClusterRequestBuilder:
     def build_connection_request(self) -> ConnectRequest:
         return ConnectRequest(self._conn_details.connection_str,
                               self._conn_details.credential,
+                              self._conn_details.options_in_connstr,
                               self._conn_details.cluster_options,
-                              self._conn_details.enable_dns_srv)
+                              self._conn_details.enable_dns_srv,
+                              self._conn_details.dns_srv_timeout)
 
     def build_close_connection_request(self) -> CloseConnectionRequest:
         return CloseConnectionRequest()

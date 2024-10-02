@@ -112,27 +112,17 @@ def parse_query_string_value(value: List[str]) -> QueryStrVal:
     return v
 
 
-def add_unknown_opts_to_connstr(connstr: str,
-                                query_str_opts: Dict[str, QueryStrVal]) -> str:
-    """**INTERNAL**
-
-    If `allow_unknown_qstr_options` is set, parse the connection string's query params for unknown
-    parameters and append unknown paremeters back to the connection string.  This is helpful in the
-    event the underlying client allows for extended query string params the Python SDK does not parse.
-
-
-    Args:
-        connstr (str): Current connection string.
-        query_opts (Dict[str, Any]): Initial connection string's query params.
-
-
-    Returns:
-        str: Final connection string.
-    """
-    unknown_opts = to_query_str(query_str_opts)
-    if unknown_opts:
-        return f'{connstr}?{unknown_opts}'
-    return connstr
+def parse_connstr_options(query_str_opts: Dict[str, QueryStrVal],
+                          options_in_connstr: Dict[str, List[str]]) -> None:
+    for k in query_str_opts.keys():
+        tokens = k.split('.')
+        if len(tokens) == 2:
+            if 'timeout' in k:
+                options_in_connstr['timeout_options'].append(k.split('.')[1])
+            elif 'security' in k:
+                options_in_connstr['security_options'].append(k.split('.')[1])
+        else:
+            options_in_connstr['general_options'].append(k)
 
 
 @dataclass
@@ -144,11 +134,18 @@ class _ConnectionDetails:
     cluster_options: ClusterOptionsTransformedKwargs
     credential: Dict[str, str]
     default_deserializer: Deserializer
+    options_in_connstr: Dict[str, List[str]]
     enable_dns_srv: Optional[bool] = None
+    dns_srv_timeout: Optional[str] = None
 
     def validate_security_options(self) -> None:
         security_opts: Optional[SecurityOptionsTransformedKwargs] = self.cluster_options.get('security_options')
         if security_opts is None:
+            # if we have security.trust_only_pem_file in the connstr, and nothing else is set,
+            # override the default for trust_only_capella
+            if ('security_options' in self.options_in_connstr
+                    and 'trust_only_pem_file' in self.options_in_connstr['security_options']):
+                self.cluster_options['security_options'] = {'trust_only_capella': False}
             return
 
         solo_security_opts = ['trust_only_pem_file',
@@ -167,6 +164,15 @@ class _ConnectionDetails:
             if trust_capella is True or trust_capella is None:
                 security_opts['trust_only_capella'] = False
 
+            # if we have security options in the connstr, override the options
+            if 'security_options' in self.options_in_connstr:
+                if 'trust_only_pem_file' in self.options_in_connstr['security_options']:
+                    for opt in solo_security_opts:
+                        security_opts.pop(opt, None)  # type: ignore
+                if ('disable_server_certificate_verification' in self.options_in_connstr['security_options']
+                        and 'disable_server_certificate_verification' in security_opts):
+                    security_opts.pop('disable_server_certificate_verification')
+
     @classmethod
     def create(cls,
                opts_builder: OptionsBuilder,
@@ -175,21 +181,50 @@ class _ConnectionDetails:
                options: Optional[object] = None,
                **kwargs: object) -> _ConnectionDetails:
         connection_str, query_str_opts = parse_connection_string(connstr)
+
+        # DNS 'things' are special
         srv = query_str_opts.pop('srv', None)
         enable_dns_srv: Optional[bool] = None
         if srv is False:
             enable_dns_srv = srv
-        kwargs.update(query_str_opts)
+        # need to keep dns_srv_timeout separate b/c it can be a golang duration format
+        # and we use the C++ core to handle that
+        srv_timeout = query_str_opts.pop('timeout.dns_srv_timeout', None)
+        dns_srv_timeout: Optional[str] = None
+        if srv_timeout is not None:
+            if not isinstance(srv_timeout, str):
+                raise TypeError('timeout.dns_srv_timeout connection string param must be a str.')
+            dns_srv_timeout = srv_timeout
+
+        dns_opts = {}
+        dns_nameserver = query_str_opts.pop('dns_nameserver', None)
+        dns_port = query_str_opts.pop('dns_port', None)
+        if dns_nameserver is not None:
+            dns_opts['dns_nameserver'] = dns_nameserver
+        if dns_port is not None:
+            dns_opts['dns_port'] = dns_port
+        if dns_opts:
+            kwargs.update(dns_opts)
+
+        options_in_connstr: Dict[str, List[str]] = {
+            'timeout_options': [],
+            'security_options': [],
+            'general_options': []
+        }
+        # NOTE:  we handle connstr overrides for timeouts/general options in
+        # ConnectRequest._process_connstr_options() before we finalize the request dict
+        # we handle security options in validate_security_options()
+        parse_connstr_options(query_str_opts, options_in_connstr)
 
         cluster_opts = opts_builder.build_cluster_options(ClusterOptions,
                                                           ClusterOptionsTransformedKwargs,
                                                           kwargs,
                                                           options)
 
-        # handle unknown query string options
-        allow_unknown_qstr_options = cluster_opts.pop('allow_unknown_qstr_options', False)
-        if allow_unknown_qstr_options:
-            connection_str = add_unknown_opts_to_connstr(connection_str, query_str_opts)
+        parsed_connstr = connection_str
+        conn_str_opts = to_query_str(query_str_opts)
+        if conn_str_opts:
+            parsed_connstr += f'?{conn_str_opts}'
 
         default_deserializer = cluster_opts.pop('deserializer', None)
         if default_deserializer is None:
@@ -200,10 +235,12 @@ class _ConnectionDetails:
         else:
             cluster_opts['user_agent_extra'] = PYCBCC_VERSION
 
-        conn_dtls = cls(connection_str,
+        conn_dtls = cls(parsed_connstr,
                         cluster_opts,
                         credential.asdict(),
                         default_deserializer,
-                        enable_dns_srv=enable_dns_srv)
+                        options_in_connstr=options_in_connstr,
+                        enable_dns_srv=enable_dns_srv,
+                        dns_srv_timeout=dns_srv_timeout)
         conn_dtls.validate_security_options()
         return conn_dtls

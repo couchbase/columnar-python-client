@@ -18,7 +18,9 @@ from __future__ import annotations
 import sys
 from asyncio import AbstractEventLoop
 from functools import wraps
-from typing import (Callable,
+from typing import (Any,
+                    Callable,
+                    Dict,
                     Optional,
                     TypeVar,
                     Union)
@@ -63,6 +65,8 @@ class AsyncWrapper:
                     return ret
                 except ColumnarError as err:
                     raise err
+                except CoreColumnarError as err:
+                    raise ErrorMapper.build_error(err) from None
                 except Exception as ex:
                     raise InternalSDKError(str(ex))
 
@@ -170,6 +174,18 @@ class _ClientAdapter:
             loop = get_event_loop()
 
         return loop
+
+    def _test_connect(self, req: ConnectRequest) -> Dict[str, Any]:
+        """
+            **INTERNAL**
+        """
+        if not hasattr(self, '_client'):
+            self._client = _CoreClient()
+
+        try:
+            return self.client._test_connect(req)
+        except CoreColumnarError as err:
+            raise ErrorMapper.build_error(err)
 
 
 InputWrappedFn: TypeAlias = Callable[[_ClientAdapter, ReqT],

@@ -31,14 +31,6 @@ from tests.columnar_config import CONFIG_FILE
 
 
 class ClusterOptionsTestSuite:
-    # TODO: Do we keep thsees?
-    # disable_mozilla_ca_certificates: Optional[bool]
-    # enable_dns_srv: Optional[bool] - removed w/ PYCO-
-    # enable_metrics: Optional[bool]
-    # enable_tracing: Optional[bool]
-    # logging_meter_emit_interval: Optional[timedelta]
-    # log_redaction: Optional[bool]
-    # tracing_options: Optional[TracingOptionsBase]
 
     TEST_MANIFEST = [
         'test_options',
@@ -57,8 +49,7 @@ class ClusterOptionsTestSuite:
     ]
 
     @pytest.mark.parametrize('opts, expected_opts',
-                             [({'allow_unknown_qstr_options': True},
-                               {}),
+                             [({}, {}),
                               ({'config_poll_floor': timedelta(seconds=5)},
                                {'config_poll_floor': 5000000}),
                               ({'config_poll_interval': timedelta(seconds=5)},
@@ -97,8 +88,6 @@ class ClusterOptionsTestSuite:
 
     @pytest.mark.parametrize('opts, expected_opts',
                              [({}, {}),
-                              ({'allow_unknown_qstr_options': True},
-                               {}),
                               ({'config_poll_floor': timedelta(seconds=5)},
                                {'config_poll_floor': 5000000}),
                               ({'config_poll_interval': timedelta(seconds=5)},
@@ -160,17 +149,11 @@ class ClusterOptionsTestSuite:
                               ({'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...']},
                                {'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...'],
                                 'trust_only_capella': False}),
-                              ({'verify_server_certificate': False},
-                               {'verify_server_certificate': False}),
+                              ({'disable_server_certificate_verification': True},
+                               {'disable_server_certificate_verification': True}),
                               ({'trust_only_platform': True},
                                {'trust_only_platform': True,
                                 'trust_only_capella': False}),
-                              ({'cipher_suites': ['TLS_AES_256_GCM_SHA384',
-                                                  'TLS_CHACHA20_POLY1305_SHA256',
-                                                  'TLS_AES_128_GCM_SHA256']},
-                               {'cipher_suites': ['TLS_AES_256_GCM_SHA384',
-                                                  'TLS_CHACHA20_POLY1305_SHA256',
-                                                  'TLS_AES_128_GCM_SHA256']}),
                               ])
     def test_security_options(self, opts: Dict[str, object], expected_opts: Dict[str, object]) -> None:
         cred = Credential.from_username_and_password('Administrator', 'password')
@@ -216,17 +199,11 @@ class ClusterOptionsTestSuite:
                               ({'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...']},
                                {'trust_only_certificates': ['BEGIN CERTIFICATIE...', 'BEGIN CERTIFICATIE...'],
                                 'trust_only_capella': False}),
-                              ({'verify_server_certificate': False},
-                               {'verify_server_certificate': False}),
+                              ({'disable_server_certificate_verification': True},
+                               {'disable_server_certificate_verification': True}),
                               ({'trust_only_platform': True},
                                {'trust_only_platform': True,
                                 'trust_only_capella': False}),
-                              ({'cipher_suites': ['TLS_AES_256_GCM_SHA384',
-                                                  'TLS_CHACHA20_POLY1305_SHA256',
-                                                  'TLS_AES_128_GCM_SHA256']},
-                               {'cipher_suites': ['TLS_AES_256_GCM_SHA384',
-                                                  'TLS_CHACHA20_POLY1305_SHA256',
-                                                  'TLS_AES_128_GCM_SHA256']}),
                               ])
     def test_security_options_kwargs(self, opts: Dict[str, object], expected_opts: Dict[str, object]) -> None:
         cred = Credential.from_username_and_password('Administrator', 'password')

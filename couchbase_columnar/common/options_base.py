@@ -43,7 +43,6 @@ from couchbase_columnar.common.enums import IpProtocol, QueryScanConsistency
 
 
 class ClusterOptionsKwargs(TypedDict, total=False):
-    allow_unknown_qstr_options: Optional[bool]
     config_poll_floor: Optional[timedelta]
     config_poll_interval: Optional[timedelta]
     deserializer: Optional[Deserializer]
@@ -60,7 +59,6 @@ class ClusterOptionsKwargs(TypedDict, total=False):
 
 
 ClusterOptionsValidKeys: TypeAlias = Literal[
-    'allow_unknown_qstr_options',
     'config_poll_floor',
     'config_poll_interval',
     'deserializer',
@@ -83,7 +81,6 @@ class ClusterOptionsBase(Dict[str, Any]):
     """
 
     VALID_OPTION_KEYS: List[ClusterOptionsValidKeys] = [
-        'allow_unknown_qstr_options',
         'config_poll_floor',
         'config_poll_interval',
         'deserializer',
@@ -110,8 +107,7 @@ class SecurityOptionsKwargs(TypedDict, total=False):
     trust_only_pem_str: Optional[str]
     trust_only_certificates: Optional[List[str]]
     trust_only_platform: Optional[bool]
-    verify_server_certificate: Optional[bool]
-    cipher_suites: Optional[List[str]]
+    disable_server_certificate_verification: Optional[bool]
 
 
 SecurityOptionsValidKeys: TypeAlias = Literal[
@@ -120,8 +116,7 @@ SecurityOptionsValidKeys: TypeAlias = Literal[
     'trust_only_pem_str',
     'trust_only_certificates',
     'trust_only_platform',
-    'verify_server_certificate',
-    'cipher_suites'
+    'disable_server_certificate_verification',
 ]
 
 
@@ -136,8 +131,7 @@ class SecurityOptionsBase(Dict[str, object]):
         'trust_only_pem_str',
         'trust_only_certificates',
         'trust_only_platform',
-        'verify_server_certificate',
-        'cipher_suites',
+        'disable_server_certificate_verification',
     ]
 
     def __init__(self, **kwargs: Unpack[SecurityOptionsKwargs]) -> None:

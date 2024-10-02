@@ -26,6 +26,7 @@
 #include "exceptions.hxx"
 #include "logger.hxx"
 #include "result.hxx"
+#include "utils.hxx"
 
 void
 add_core_enums(PyObject* pyObj_module)
@@ -136,12 +137,12 @@ create_connection(PyObject* self, PyObject* args, PyObject* kwargs)
 }
 
 static PyObject*
-get_connection_information(PyObject* self, PyObject* args, PyObject* kwargs)
+test_create_connection(PyObject* self, PyObject* args, PyObject* kwargs)
 {
-  PyObject* res = get_connection_info(self, args, kwargs);
+  PyObject* res = handle_create_connection_test(self, args, kwargs);
   if (res == nullptr && PyErr_Occurred() == nullptr) {
     pycbcc_set_python_exception(
-      CoreClientErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to get connection information.");
+      CoreClientErrors::INTERNAL_SDK, __FILE__, __LINE__, "Unable to create connection.");
   }
   return res;
 }
@@ -167,10 +168,6 @@ static struct PyMethodDef methods[] = { { "create_connection",
                                           (PyCFunction)create_connection,
                                           METH_VARARGS | METH_KEYWORDS,
                                           "Create connection object" },
-                                        { "get_connection_info",
-                                          (PyCFunction)get_connection_information,
-                                          METH_VARARGS | METH_KEYWORDS,
-                                          "Get connection options" },
                                         { "close_connection",
                                           (PyCFunction)close_connection,
                                           METH_VARARGS | METH_KEYWORDS,
@@ -183,6 +180,10 @@ static struct PyMethodDef methods[] = { { "create_connection",
                                           (PyCFunction)test_exception_builder,
                                           METH_VARARGS,
                                           "Test method to build exceptions from bindings" },
+                                        { "_test_create_connection",
+                                          (PyCFunction)test_create_connection,
+                                          METH_VARARGS | METH_KEYWORDS,
+                                          "Test creating a connection" },
                                         { nullptr, nullptr, 0, nullptr } };
 
 static struct PyModuleDef pycbcc_core_module = { { PyObject_HEAD_INIT(NULL) nullptr, 0, nullptr },

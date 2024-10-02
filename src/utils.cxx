@@ -16,6 +16,7 @@
  */
 
 #include "utils.hxx"
+#include "exceptions.hxx"
 
 couchbase::core::utils::binary
 PyObject_to_binary(PyObject* pyObj_value)
@@ -69,4 +70,26 @@ size_t_to_py_ssize_t(std::size_t value)
     throw std::invalid_argument("Cannot convert provided size_t value to Py_ssize_t.");
   }
   return static_cast<Py_ssize_t>(value);
+}
+
+std::chrono::milliseconds
+pyObj_to_duration(PyObject* pyObj_duration)
+{
+  auto duration_str = std::string(PyUnicode_AsUTF8(pyObj_duration));
+  try {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+      couchbase::core::utils::parse_duration(duration_str));
+  } catch (const couchbase::core::utils::duration_parse_error& dpe) {
+    auto msg =
+      fmt::format(R"(Unable to parse duration (value: "{}"): {})", duration_str, dpe.what());
+    throw std::invalid_argument(msg);
+  } catch (const std::invalid_argument& ex1) {
+    auto msg = fmt::format(
+      R"(Unable to parse duration (value "{}" is not a number): {})", duration_str, ex1.what());
+    throw std::invalid_argument(msg);
+  } catch (const std::out_of_range& ex2) {
+    auto msg = fmt::format(
+      R"(Unable to parse duration (value "{}" is out of range): {})", duration_str, ex2.what());
+    throw std::invalid_argument(msg);
+  }
 }
