@@ -72,7 +72,7 @@ logging.trace = partial(logging.log, logging.TRACE)  # type: ignore
 
 """
 
-pycbc teardown methods
+pycbcc teardown methods
 
 """
 import atexit  # nopep8 # isort:skip # noqa: E402

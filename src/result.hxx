@@ -27,9 +27,6 @@ struct result {
   PyObject_HEAD PyObject* dict;
 };
 
-int
-pycbcc_result_type_init(PyObject** ptr);
-
 PyObject*
 create_result_obj();
 
@@ -51,11 +48,11 @@ struct columnar_query_iterator {
   }
 };
 
-int
-pycbcc_columnar_query_iterator_type_init(PyObject** ptr);
-
 PyObject*
 create_columnar_query_iterator_obj(PyObject* pyObj_row_callback);
 
 PyObject*
 get_columnar_query_metadata();
+
+PyObject*
+add_result_objects(PyObject* pyObj_module);

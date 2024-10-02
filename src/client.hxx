@@ -236,7 +236,3 @@ add_core_enums(PyObject* module);
 
 void
 add_constants(PyObject* module);
-
-extern PyTypeObject result_type;
-extern PyTypeObject core_error_type;
-extern PyTypeObject columnar_query_iterator_type;
