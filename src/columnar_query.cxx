@@ -49,9 +49,15 @@ create_columnar_response(couchbase::core::columnar::query_result resp,
   PyObject* pyObj_args = NULL;
   PyObject* pyObj_func = NULL;
   PyObject* pyObj_callback_res = nullptr;
-
   PyGILState_STATE state = PyGILState_Ensure();
   auto query_iter = reinterpret_cast<columnar_query_iterator*>(pyObj_query_iter);
+  if (query_iter->pending_op_ == nullptr) {
+    PyGILState_Release(state);
+    CB_LOG_DEBUG("{}:  columnar_query_iterator does not have a pending_operation. Returning "
+                 "without further processing.",
+                 "PYCBCC");
+    return;
+  }
   if (err.ec) {
     pyObj_exc = pycbcc_build_exception(err, __FILE__, __LINE__);
     if (pyObj_callback == nullptr) {
@@ -333,7 +339,7 @@ handle_columnar_query([[maybe_unused]] PyObject* self, PyObject* args, PyObject*
       resp.error().message.empty() ? resp.error().ec.message() : resp.error().message;
     CB_LOG_DEBUG(
       "{}: Unable to create query iterator.  Core pending operation error: code={}, message={}",
-      "PYCBCC:",
+      "PYCBCC",
       resp.error().ec.value(),
       err_message);
     pycbcc_set_python_exception(resp.error(), __FILE__, __LINE__);
