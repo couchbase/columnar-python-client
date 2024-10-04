@@ -65,7 +65,10 @@ def to_microseconds(value: Union[timedelta, float, int]) -> int:
 def to_query_str(params: Dict[str, Any]) -> str:
     encoded_params = []
     for k, v in params.items():
-        encoded_params.append('{0}={1}'.format(quote(k), quote(str(v))))
+        if v in [True, False]:
+            encoded_params.append(f'{quote(k)}={quote(str(v).lower())}')
+        else:
+            encoded_params.append(f'{quote(k)}={quote(str(v))}')
 
     return '&'.join(encoded_params)
 

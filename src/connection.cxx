@@ -21,6 +21,7 @@
 #include <core/utils/connection_string.hxx>
 
 #include "exceptions.hxx"
+#include "utils.hxx"
 
 couchbase::core::io::ip_protocol
 pyObj_to_ip_protocol(std::string ip_protocol)
@@ -176,9 +177,35 @@ get_cluster_credentials(PyObject* pyObj_credentials)
 }
 
 void
+update_timeout_config(couchbase::core::cluster_options& options,
+                      couchbase::core::columnar::timeout_config& timeouts,
+                      PyObject* pyObj_connstr_timeout_opts)
+{
+  size_t nargs = static_cast<size_t>(PyList_Size(pyObj_connstr_timeout_opts));
+  size_t ii;
+  for (ii = 0; ii < nargs; ++ii) {
+    PyObject* pyObj_opt = PyList_GetItem(pyObj_connstr_timeout_opts, ii);
+    if (!pyObj_opt) {
+      throw std::runtime_error("Unable to parse connstr timeout option key.");
+    }
+    std::string k;
+    if (PyUnicode_Check(pyObj_opt)) {
+      k = std::string(PyUnicode_AsUTF8(pyObj_opt));
+    }
+    if (k.empty()) {
+      throw std::runtime_error("Unable to parse connstr timeout option key.");
+    }
+    if (k == "query_timeout") {
+      timeouts.query_timeout = options.query_timeout;
+    }
+  }
+}
+
+void
 update_cluster_timeout_options(couchbase::core::cluster_options& options,
                                couchbase::core::columnar::timeout_config& timeouts,
-                               PyObject* pyObj_timeout_opts)
+                               PyObject* pyObj_timeout_opts,
+                               PyObject* pyObj_connstr_timeout_opts)
 {
   PyObject* pyObj_bootstrap_timeout = PyDict_GetItemString(pyObj_timeout_opts, "bootstrap_timeout");
   if (pyObj_bootstrap_timeout != nullptr) {
@@ -229,6 +256,9 @@ update_cluster_timeout_options(couchbase::core::cluster_options& options,
     auto query_timeout = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_query_timeout));
     auto query_timeout_ms = std::chrono::milliseconds(std::max(0ULL, query_timeout / 1000ULL));
     timeouts.query_timeout = query_timeout_ms;
+  } else if (pyObj_connstr_timeout_opts != nullptr && PyList_Check(pyObj_connstr_timeout_opts)) {
+    // this means user specified query timeout in connstr
+    update_timeout_config(options, timeouts, pyObj_connstr_timeout_opts);
   }
 }
 
@@ -289,30 +319,31 @@ update_cluster_security_options(couchbase::core::cluster_options& options,
     options.security_options.trust_only_platform = true;
   }
 
-  PyObject* pyObj_cipher_suites = PyDict_GetItemString(pyObj_security_opts, "cipher_suites");
-  if (pyObj_cipher_suites && PyList_Check(pyObj_cipher_suites)) {
-    std::vector<std::string> ciphers{};
-    size_t nargs = static_cast<size_t>(PyList_Size(pyObj_cipher_suites));
-    size_t ii;
-    for (ii = 0; ii < nargs; ++ii) {
-      PyObject* pyObj_cipher = PyList_GetItem(pyObj_cipher_suites, ii);
-      if (!pyObj_cipher) {
-        CB_LOG_WARNING("{}: Unable to get cipher from cipher suite list.  Index={}", "PYCBCC", ii);
-        continue;
-      }
-      Py_INCREF(pyObj_cipher);
-      ciphers.emplace_back(std::string(PyUnicode_AsUTF8(pyObj_cipher)));
-      Py_DECREF(pyObj_cipher);
-      pyObj_cipher = nullptr;
-    }
-    if (!ciphers.empty()) {
-      options.security_options.cipher_suites = ciphers;
-    }
-  }
+  // TODO: Remove until supported at a later date
+  // PyObject* pyObj_cipher_suites = PyDict_GetItemString(pyObj_security_opts, "cipher_suites");
+  // if (pyObj_cipher_suites && PyList_Check(pyObj_cipher_suites)) {
+  //   std::vector<std::string> ciphers{};
+  //   size_t nargs = static_cast<size_t>(PyList_Size(pyObj_cipher_suites));
+  //   size_t ii;
+  //   for (ii = 0; ii < nargs; ++ii) {
+  //     PyObject* pyObj_cipher = PyList_GetItem(pyObj_cipher_suites, ii);
+  //     if (!pyObj_cipher) {
+  //       CB_LOG_WARNING("{}: Unable to get cipher from cipher suite list.  Index={}", "PYCBCC",
+  //       ii); continue;
+  //     }
+  //     Py_INCREF(pyObj_cipher);
+  //     ciphers.emplace_back(std::string(PyUnicode_AsUTF8(pyObj_cipher)));
+  //     Py_DECREF(pyObj_cipher);
+  //     pyObj_cipher = nullptr;
+  //   }
+  //   if (!ciphers.empty()) {
+  //     options.security_options.cipher_suites = ciphers;
+  //   }
+  // }
 
   PyObject* pyObj_verify_server_cert =
-    PyDict_GetItemString(pyObj_security_opts, "verify_server_certificate");
-  if (pyObj_verify_server_cert != nullptr && pyObj_verify_server_cert == Py_False) {
+    PyDict_GetItemString(pyObj_security_opts, "disable_server_certificate_verification");
+  if (pyObj_verify_server_cert != nullptr && pyObj_verify_server_cert == Py_True) {
     options.tls_verify = couchbase::core::tls_verify_mode::none;
   }
 }
@@ -320,16 +351,26 @@ update_cluster_security_options(couchbase::core::cluster_options& options,
 void
 update_cluster_options(couchbase::core::cluster_options& options,
                        couchbase::core::columnar::timeout_config& timeouts,
-                       PyObject* pyObj_options)
+                       PyObject* pyObj_options,
+                       PyObject* pyObj_connstr_timeout_opts)
 {
   PyObject* pyObj_timeout_opts = PyDict_GetItemString(pyObj_options, "timeout_options");
   if (pyObj_timeout_opts != nullptr) {
-    update_cluster_timeout_options(options, timeouts, pyObj_timeout_opts);
+    update_cluster_timeout_options(
+      options, timeouts, pyObj_timeout_opts, pyObj_connstr_timeout_opts);
+  } else if (pyObj_connstr_timeout_opts != nullptr && PyList_Check(pyObj_connstr_timeout_opts)) {
+    // this means user specified timeout in connstr
+    update_timeout_config(options, timeouts, pyObj_connstr_timeout_opts);
   }
 
   PyObject* pyObj_security_opts = PyDict_GetItemString(pyObj_options, "security_options");
   if (pyObj_security_opts != nullptr) {
     update_cluster_security_options(options, pyObj_security_opts);
+  }
+
+  // if we set the certificate via the connstr, we need to also set the security_option bool
+  if (!options.trust_certificate.empty() && !options.security_options.trust_only_pem_file) {
+    options.security_options.trust_only_pem_file = true;
   }
 
   PyObject* pyObj_disable_mozilla_ca_certificates =
@@ -390,8 +431,11 @@ update_cluster_options(couchbase::core::cluster_options& options,
 
   PyObject* pyObj_dns_nameserver = PyDict_GetItemString(pyObj_options, "dns_nameserver");
   PyObject* pyObj_dns_port = PyDict_GetItemString(pyObj_options, "dns_port");
-  PyObject* pyObj_dns_srv_timeout = nullptr;
-  if (pyObj_timeout_opts != nullptr) {
+  PyObject* pyObj_dns_srv_timeout = PyDict_GetItemString(pyObj_options, "dns_srv_timeout");
+  auto dns_timeout_from_connstr = false;
+  if (pyObj_dns_srv_timeout != nullptr) {
+    dns_timeout_from_connstr = true;
+  } else if (pyObj_dns_srv_timeout == nullptr && pyObj_timeout_opts != nullptr) {
     pyObj_dns_srv_timeout = PyDict_GetItemString(pyObj_timeout_opts, "dns_srv_timeout");
   }
   if (pyObj_dns_srv_timeout != nullptr || pyObj_dns_nameserver != nullptr ||
@@ -404,9 +448,13 @@ update_cluster_options(couchbase::core::cluster_options& options,
                   : options.dns_config.port();
     auto dns_srv_timeout_ms = couchbase::core::timeout_defaults::dns_srv_timeout;
     if (pyObj_dns_srv_timeout != nullptr) {
-      auto dns_srv_timeout =
-        static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_dns_srv_timeout));
-      dns_srv_timeout_ms = std::chrono::milliseconds(std::max(0ULL, dns_srv_timeout / 1000ULL));
+      if (dns_timeout_from_connstr) {
+        dns_srv_timeout_ms = pyObj_to_duration(pyObj_dns_srv_timeout);
+      } else {
+        auto dns_srv_timeout =
+          static_cast<uint64_t>(PyLong_AsUnsignedLongLong(pyObj_dns_srv_timeout));
+        dns_srv_timeout_ms = std::chrono::milliseconds(std::max(0ULL, dns_srv_timeout / 1000ULL));
+      }
     }
     options.dns_config = couchbase::core::io::dns::dns_config(nameserver, port, dns_srv_timeout_ms);
   }
@@ -421,24 +469,68 @@ update_cluster_options(couchbase::core::cluster_options& options,
   options.enable_metrics = false;
 }
 
+std::optional<std::tuple<couchbase::core::utils::connection_string,
+                         couchbase::core::cluster_credentials,
+                         couchbase::core::columnar::timeout_config>>
+get_connection_config(char* conn_str,
+                      PyObject* pyObj_credential,
+                      PyObject* pyObj_options,
+                      PyObject* pyObj_connstr_timeout_opts)
+{
+  couchbase::core::utils::connection_string connection_str =
+    couchbase::core::utils::parse_connection_string(conn_str);
+
+  if (!connection_str.warnings.empty()) {
+    auto msg = fmt::format(R"(Invalid option(s) found. Details: {})",
+                           couchbase::core::utils::join_strings(connection_str.warnings, ","));
+    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, msg.c_str());
+    return std::nullopt;
+  }
+  if (connection_str.error.has_value()) {
+    auto msg =
+      fmt::format("Error parsing connection string. Details: {}", connection_str.error.value());
+    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, msg.c_str());
+    return std::nullopt;
+  }
+
+  couchbase::core::cluster_credentials auth = get_cluster_credentials(pyObj_credential);
+  couchbase::core::columnar::timeout_config timeouts;
+
+  try {
+    update_cluster_options(
+      connection_str.options, timeouts, pyObj_options, pyObj_connstr_timeout_opts);
+    return std::make_tuple(connection_str, auth, timeouts);
+  } catch (const std::invalid_argument& e) {
+    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, e.what());
+    return std::nullopt;
+  } catch (const std::exception& e) {
+    PyErr_SetString(PyExc_Exception, e.what());
+    return std::nullopt;
+  }
+}
+
 PyObject*
 handle_create_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObject* kwargs)
 {
   char* conn_str = nullptr;
   PyObject* pyObj_credential = nullptr;
   PyObject* pyObj_options = nullptr;
+  PyObject* pyObj_connstr_timeout_opts = nullptr;
   PyObject* pyObj_result = nullptr;
 
-  static const char* kw_list[] = { "", "credential", "options", nullptr };
+  static const char* kw_list[] = {
+    "", "credential", "options", "connstr_timeout_options", nullptr
+  };
 
-  const char* kw_format = "s|OO";
+  const char* kw_format = "s|OOO";
   int ret = PyArg_ParseTupleAndKeywords(args,
                                         kwargs,
                                         kw_format,
                                         const_cast<char**>(kw_list),
                                         &conn_str,
                                         &pyObj_credential,
-                                        &pyObj_options);
+                                        &pyObj_options,
+                                        &pyObj_connstr_timeout_opts);
 
   if (!ret) {
     std::string msg = "Cannot create connection. Unable to parse args/kwargs.";
@@ -446,29 +538,19 @@ handle_create_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObje
     return nullptr;
   }
 
-  couchbase::core::utils::connection_string connection_str =
-    couchbase::core::utils::parse_connection_string(conn_str);
-  couchbase::core::cluster_credentials auth = get_cluster_credentials(pyObj_credential);
-
-  couchbase::core::columnar::timeout_config timeouts;
-
-  try {
-    update_cluster_options(connection_str.options, timeouts, pyObj_options);
-  } catch (const std::invalid_argument& e) {
-    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, e.what());
-    return nullptr;
-  } catch (const std::exception& e) {
-    PyErr_SetString(PyExc_Exception, e.what());
+  auto connection_config =
+    get_connection_config(conn_str, pyObj_credential, pyObj_options, pyObj_connstr_timeout_opts);
+  if (!connection_config.has_value()) {
+    // exception has already been set
     return nullptr;
   }
-
   PyObject* pyObj_num_io_threads = PyDict_GetItemString(pyObj_options, "num_io_threads");
   int num_io_threads = 1;
   if (pyObj_num_io_threads != nullptr) {
     num_io_threads = static_cast<uint32_t>(PyLong_AsUnsignedLong(pyObj_num_io_threads));
   }
 
-  connection* const conn = new connection(num_io_threads, timeouts);
+  connection* const conn = new connection(num_io_threads, std::get<2>(connection_config.value()));
   PyObject* pyObj_conn = PyCapsule_New(conn, "conn_", dealloc_conn);
 
   if (pyObj_conn == nullptr) {
@@ -484,7 +566,8 @@ handle_create_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObje
   auto f = barrier->get_future();
   int callback_count = 0;
   Py_BEGIN_ALLOW_THREADS conn->cluster_.open_in_background(
-    couchbase::core::origin(auth, connection_str),
+    couchbase::core::origin(std::get<1>(connection_config.value()),
+                            std::get<0>(connection_config.value())),
     [pyObj_conn, callback_count, barrier](std::error_code ec) mutable {
       if (callback_count == 0) {
         create_connection_callback(pyObj_conn, ec, barrier);
@@ -496,36 +579,46 @@ handle_create_connection([[maybe_unused]] PyObject* self, PyObject* args, PyObje
 }
 
 PyObject*
-get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* kwargs)
+handle_create_connection_test([[maybe_unused]] PyObject* self, PyObject* args, PyObject* kwargs)
 {
-  PyObject* pyObj_conn = nullptr;
-  static const char* kw_list[] = { "", nullptr };
+  char* conn_str = nullptr;
+  PyObject* pyObj_credential = nullptr;
+  PyObject* pyObj_options = nullptr;
+  PyObject* pyObj_connstr_timeout_opts = nullptr;
 
-  const char* kw_format = "O!";
-  int ret = PyArg_ParseTupleAndKeywords(
-    args, kwargs, kw_format, const_cast<char**>(kw_list), &PyCapsule_Type, &pyObj_conn);
+  static const char* kw_list[] = {
+    "", "credential", "options", "connstr_timeout_options", nullptr
+  };
+
+  const char* kw_format = "s|OOO";
+  int ret = PyArg_ParseTupleAndKeywords(args,
+                                        kwargs,
+                                        kw_format,
+                                        const_cast<char**>(kw_list),
+                                        &conn_str,
+                                        &pyObj_credential,
+                                        &pyObj_options,
+                                        &pyObj_connstr_timeout_opts);
 
   if (!ret) {
-    std::string msg = "Cannot get connection options. Unable to parse args/kwargs.";
+    std::string msg = "Cannot create connection. Unable to parse args/kwargs.";
     pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, msg.c_str());
     return nullptr;
   }
 
-  connection* conn = reinterpret_cast<connection*>(PyCapsule_GetPointer(pyObj_conn, "conn_"));
-  if (nullptr == conn) {
-    pycbcc_set_python_exception(CoreClientErrors::VALUE, __FILE__, __LINE__, NULL_CONN_OBJECT);
+  auto connection_config =
+    get_connection_config(conn_str, pyObj_credential, pyObj_options, pyObj_connstr_timeout_opts);
+  if (!connection_config.has_value()) {
     return nullptr;
   }
 
-  auto cluster_info = conn->cluster_.origin();
-  if (cluster_info.first) {
-    Py_RETURN_NONE;
-  }
-  auto opts = cluster_info.second.options();
-  PyObject* pyObj_opts = PyDict_New();
+  PyObject* pyObj_conn_options = PyDict_New();
+  PyObject* pyObj_timeout_opts = PyDict_New();
+  couchbase::core::cluster_options opts = std::get<0>(connection_config.value()).options;
+  couchbase::core::columnar::timeout_config timeouts = std::get<2>(connection_config.value());
   std::chrono::duration<unsigned long long, std::milli> int_msec = opts.bootstrap_timeout;
   PyObject* pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "bootstrap_timeout", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_timeout_opts, "connect_timeout", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -533,7 +626,7 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
 
   int_msec = opts.resolve_timeout;
   pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "resolve_timeout", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_timeout_opts, "resolve_timeout", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -541,7 +634,15 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
 
   int_msec = opts.connect_timeout;
   pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "connect_timeout", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_timeout_opts, "socket_connect_timeout", pyObj_tmp)) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+  Py_XDECREF(pyObj_tmp);
+
+  int_msec = opts.dispatch_timeout;
+  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
+  if (-1 == PyDict_SetItemString(pyObj_timeout_opts, "dispatch_timeout", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -549,7 +650,7 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
 
   int_msec = opts.management_timeout;
   pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "management_timeout", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_timeout_opts, "management_timeout", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -557,20 +658,72 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
 
   int_msec = opts.dns_config.timeout();
   pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "dns_srv_timeout", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_timeout_opts, "dns_srv_timeout", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
   Py_XDECREF(pyObj_tmp);
+
+  int_msec = timeouts.query_timeout;
+  pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
+  if (-1 == PyDict_SetItemString(pyObj_timeout_opts, "query_timeout", pyObj_tmp)) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+  Py_XDECREF(pyObj_tmp);
+
+  if (-1 == PyDict_SetItemString(pyObj_conn_options, "timeout_options", pyObj_timeout_opts)) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+  Py_XDECREF(pyObj_timeout_opts);
+
+  PyObject* pyObj_security_opts = PyDict_New();
 
   pyObj_tmp = PyUnicode_FromString(opts.trust_certificate.c_str());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "trust_certificate", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_security_opts, "trust_certificate", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
   Py_XDECREF(pyObj_tmp);
 
-  if (-1 == PyDict_SetItemString(pyObj_opts,
+  pyObj_tmp = tls_verify_mode_to_pyObj(opts.tls_verify);
+  if (-1 == PyDict_SetItemString(pyObj_security_opts, "tls_verify", pyObj_tmp)) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+  Py_XDECREF(pyObj_tmp);
+
+  if (-1 == PyDict_SetItemString(pyObj_conn_options, "security_options", pyObj_security_opts)) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+  Py_XDECREF(pyObj_security_opts);
+
+  PyObject* pyObj_credentials = PyDict_New();
+  couchbase::core::cluster_credentials creds = std::get<1>(connection_config.value());
+  pyObj_tmp = PyUnicode_FromString(creds.username.c_str());
+  if (-1 == PyDict_SetItemString(pyObj_credentials, "username", pyObj_tmp)) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+  Py_XDECREF(pyObj_tmp);
+
+  pyObj_tmp = PyUnicode_FromString(creds.password.c_str());
+  if (-1 == PyDict_SetItemString(pyObj_credentials, "password", pyObj_tmp)) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+  Py_XDECREF(pyObj_tmp);
+
+  if (-1 == PyDict_SetItemString(pyObj_conn_options, "credentials", pyObj_credentials)) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+  Py_XDECREF(pyObj_credentials);
+
+  PyObject* pyObj_general_opts = PyDict_New();
+  if (-1 == PyDict_SetItemString(pyObj_general_opts,
                                  "disable_mozilla_ca_certificates",
                                  opts.disable_mozilla_ca_certificates ? Py_True : Py_False)) {
     PyErr_Print();
@@ -578,19 +731,19 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
   }
 
   pyObj_tmp = ip_protocol_to_pyObj(opts.use_ip_protocol);
-  if (-1 == PyDict_SetItemString(pyObj_opts, "ip_protocol", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_general_opts, "ip_protocol", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
   Py_XDECREF(pyObj_tmp);
 
   if (-1 == PyDict_SetItemString(
-              pyObj_opts, "enable_dns_srv", opts.enable_dns_srv ? Py_True : Py_False)) {
+              pyObj_general_opts, "enable_dns_srv", opts.enable_dns_srv ? Py_True : Py_False)) {
     PyErr_Print();
     PyErr_Clear();
   }
 
-  if (-1 == PyDict_SetItemString(pyObj_opts,
+  if (-1 == PyDict_SetItemString(pyObj_general_opts,
                                  "enable_clustermap_notification",
                                  opts.enable_clustermap_notification ? Py_True : Py_False)) {
     PyErr_Print();
@@ -598,14 +751,7 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
   }
 
   pyObj_tmp = PyUnicode_FromString(opts.network.c_str());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "network", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  pyObj_tmp = tls_verify_mode_to_pyObj(opts.tls_verify);
-  if (-1 == PyDict_SetItemString(pyObj_opts, "tls_verify", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_general_opts, "network", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -613,7 +759,7 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
 
   int_msec = opts.config_poll_interval;
   pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "config_poll_interval", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_general_opts, "config_poll_interval", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
@@ -621,82 +767,33 @@ get_connection_info([[maybe_unused]] PyObject* self, PyObject* args, PyObject* k
 
   int_msec = opts.config_poll_floor;
   pyObj_tmp = PyLong_FromUnsignedLongLong(int_msec.count());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "config_poll_floor", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_general_opts, "config_poll_floor", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
   Py_XDECREF(pyObj_tmp);
 
   pyObj_tmp = PyUnicode_FromString(opts.user_agent_extra.c_str());
-  if (-1 == PyDict_SetItemString(pyObj_opts, "user_agent_extra", pyObj_tmp)) {
+  if (-1 == PyDict_SetItemString(pyObj_general_opts, "user_agent_extra", pyObj_tmp)) {
     PyErr_Print();
     PyErr_Clear();
   }
   Py_XDECREF(pyObj_tmp);
 
-  auto credentials = cluster_info.second.credentials();
-  PyObject* pyObj_creds = PyDict_New();
-
-  pyObj_tmp = PyUnicode_FromString(credentials.username.c_str());
-  if (-1 == PyDict_SetItemString(pyObj_creds, "username", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  pyObj_tmp = PyUnicode_FromString(credentials.password.c_str());
-  if (-1 == PyDict_SetItemString(pyObj_creds, "password", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  pyObj_tmp = PyUnicode_FromString(credentials.certificate_path.c_str());
-  if (-1 == PyDict_SetItemString(pyObj_creds, "certificate_path", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  pyObj_tmp = PyUnicode_FromString(credentials.key_path.c_str());
-  if (-1 == PyDict_SetItemString(pyObj_creds, "key_path", pyObj_tmp)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_tmp);
-
-  PyObject* pyObj_allowed_sasl_mechanisms = PyList_New(static_cast<Py_ssize_t>(0));
-  if (credentials.allowed_sasl_mechanisms.has_value()) {
-    for (auto const& mech : credentials.allowed_sasl_mechanisms.value()) {
-      pyObj_tmp = PyUnicode_FromString(mech.c_str());
-      if (-1 == PyList_Append(pyObj_allowed_sasl_mechanisms, pyObj_tmp)) {
-        PyErr_Print();
-        PyErr_Clear();
-      }
-      Py_XDECREF(pyObj_tmp);
-    }
-  }
-
-  if (-1 ==
-      PyDict_SetItemString(pyObj_creds, "allowed_sasl_mechanisms", pyObj_allowed_sasl_mechanisms)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_allowed_sasl_mechanisms);
-
-  if (-1 == PyDict_SetItemString(pyObj_opts, "credentials", pyObj_creds)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-  Py_XDECREF(pyObj_creds);
-
-  if (-1 == PyDict_SetItemString(
-              pyObj_opts, "dump_configuration", opts.dump_configuration ? Py_True : Py_False)) {
+  if (-1 == PyDict_SetItemString(pyObj_general_opts,
+                                 "dump_configuration",
+                                 opts.dump_configuration ? Py_True : Py_False)) {
     PyErr_Print();
     PyErr_Clear();
   }
 
-  return pyObj_opts;
+  if (-1 == PyDict_SetItemString(pyObj_conn_options, "general", pyObj_general_opts)) {
+    PyErr_Print();
+    PyErr_Clear();
+  }
+  Py_XDECREF(pyObj_general_opts);
+
+  return pyObj_conn_options;
 }
 
 PyObject*

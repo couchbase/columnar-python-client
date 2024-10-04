@@ -40,7 +40,7 @@ class ColumnarConfig:
         self._database_name = 'travel-sample'
         self._scope_name = 'inventory'
         self._collection_name = 'airline'
-        self._tls_verify = True
+        self._disable_server_certificate_verification = False
 
     @property
     def database_name(self) -> str:
@@ -59,8 +59,8 @@ class ColumnarConfig:
         return self._nonprod
 
     @property
-    def tls_verify(self) -> bool:
-        return self._tls_verify
+    def disable_server_certificate_verification(self) -> bool:
+        return self._disable_server_certificate_verification
 
     @property
     def scope_name(self) -> str:
@@ -102,9 +102,11 @@ class ColumnarConfig:
             columnar_config._collection_name = os.environ.get('PYCBCC_COLLECTION',
                                                               test_config_columnar.get('collection_name',
                                                                                        fallback='airline'))
-            tls_verify = os.environ.get('PYCBCC_TLS_VERIFY', test_config_columnar.get('tls_verify', fallback='ON'))
-            if tls_verify.lower() not in ENV_TRUE:
-                columnar_config._tls_verify = False
+            disable_cert_verification = os.environ.get('PYCBCC_DISABLE_SERVER_CERT_VERIFICATION',
+                                                       test_config_columnar.get('disable_server_cert_verification',
+                                                                                fallback='ON'))
+            if disable_cert_verification.lower() in ENV_TRUE:
+                columnar_config._disable_server_certificate_verification = True
 
         except Exception as ex:
             raise ColumnarTestEnvironmentException(f'Problem trying read/load test configuration:\n{ex}')

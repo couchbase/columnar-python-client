@@ -39,7 +39,6 @@ from couchbase_columnar.common.enums import IpProtocol, QueryScanConsistency
 
 # need to populate the TypedDict to help the static type checker
 class ClusterOptionsKwargs(TypedDict, total=False):
-    allow_unknown_qstr_options: Optional[bool]
     config_poll_floor: Optional[timedelta]
     config_poll_interval: Optional[timedelta]
     deserializer: Optional[Deserializer]
@@ -55,7 +54,6 @@ class ClusterOptionsKwargs(TypedDict, total=False):
     user_agent_extra: Optional[str]
 
 ClusterOptionsValidKeys: TypeAlias = Literal[
-    'allow_unknown_qstr_options',
     'config_poll_floor',
     'config_poll_interval',
     'deserializer',
@@ -77,7 +75,6 @@ class ClusterOptionsBase(Dict[str, Any]):
     """
 
     VALID_OPTION_KEYS: List[ClusterOptionsValidKeys] = [
-        'allow_unknown_qstr_options',
         'config_poll_floor',
         'config_poll_interval',
         'deserializer',
@@ -100,7 +97,6 @@ class ClusterOptionsBase(Dict[str, Any]):
     @overload
     def __init__(self,
                  *,
-                 allow_unknown_qstr_options: Optional[bool] = None,
                  config_poll_floor: Optional[timedelta] = None,
                  config_poll_interval: Optional[timedelta] = None,
                  deserializer: Optional[Deserializer] = None,
@@ -124,8 +120,7 @@ class SecurityOptionsKwargs(TypedDict, total=False):
     trust_only_pem_str: Optional[str]
     trust_only_certificates: Optional[List[str]]
     trust_only_platform: Optional[bool]
-    verify_server_certificate: Optional[bool]
-    cipher_suites: Optional[List[str]]
+    disable_server_certificate_verification: Optional[bool]
 
 SecurityOptionsValidKeys: TypeAlias = Literal[
     'trust_only_capella',
@@ -133,8 +128,7 @@ SecurityOptionsValidKeys: TypeAlias = Literal[
     'trust_only_pem_str',
     'trust_only_certificates',
     'trust_only_platform',
-    'verify_server_certificate',
-    'cipher_suites'
+    'disable_server_certificate_verification',
 ]
 
 
@@ -149,8 +143,7 @@ class SecurityOptionsBase(Dict[str, object]):
         'trust_only_pem_str',
         'trust_only_certificates',
         'trust_only_platform',
-        'verify_server_certificate',
-        'cipher_suites',
+        'disable_server_certificate_verification',
     ]
 
     @overload
@@ -165,8 +158,7 @@ class SecurityOptionsBase(Dict[str, object]):
                  trust_only_pem_str: Optional[str] = None,
                  trust_only_certificates: Optional[List[str]] = None,
                  trust_only_platform: Optional[bool] = None,
-                 verify_server_certificate: Optional[bool] = None,
-                 cipher_suites: Optional[List[str]] = None,
+                 disable_server_certificate_verification: Optional[bool] = None,
                  ) -> None:
         ...
 

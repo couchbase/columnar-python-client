@@ -16,12 +16,15 @@
 from __future__ import annotations
 
 from typing import (TYPE_CHECKING,
+                    Any,
                     Callable,
+                    Dict,
                     Optional)
 
 from couchbase_columnar.protocol.core import PyCapsuleType
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
-from couchbase_columnar.protocol.pycbcc_core import (close_connection,
+from couchbase_columnar.protocol.pycbcc_core import (_test_create_connection,
+                                                     close_connection,
                                                      columnar_query,
                                                      create_connection)
 
@@ -91,3 +94,11 @@ class _CoreClient:
         if run_in_background is not None:
             final_kwargs['run_in_background'] = run_in_background
         return columnar_query(**final_kwargs)
+
+    def _test_connect(self, req: ConnectRequest) -> Dict[str, Any]:
+        """
+        **INTERNAL**
+        """
+        final_kwargs = req.to_req_dict()
+        conn_str = final_kwargs.pop('connection_str')
+        return _test_create_connection(conn_str, **final_kwargs)

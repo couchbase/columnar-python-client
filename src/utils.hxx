@@ -20,6 +20,7 @@
 #include "Python.h" // NOLINT
 #include <chrono>
 #include <core/utils/binary.hxx>
+#include <core/utils/duration_parser.hxx>
 #include <core/utils/join_strings.hxx>
 #include <core/utils/json.hxx>
 #include <stdexcept>
@@ -41,3 +42,6 @@ binary_to_string(couchbase::core::utils::binary value);
 
 std::size_t py_ssize_t_to_size_t(Py_ssize_t);
 Py_ssize_t size_t_to_py_ssize_t(std::size_t);
+
+std::chrono::milliseconds
+pyObj_to_duration(PyObject* pyObj_duration);

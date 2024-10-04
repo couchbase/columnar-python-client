@@ -143,11 +143,11 @@ class BlockingTestEnvironment(TestEnvironment):
             from couchbase_columnar.common.core._certificates import _Certificates
             sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
 
-        if self.config.tls_verify is False:
+        if self.config.disable_server_certificate_verification is True:
             if sec_opts is not None:
-                sec_opts['verify_server_certificate'] = False
+                sec_opts['disable_server_certificate_verification'] = True
             else:
-                sec_opts = SecurityOptions(verify_server_certificate=False)
+                sec_opts = SecurityOptions(disable_server_certificate_verification=True)
 
         if sec_opts is not None:
             opts = ClusterOptions(security_options=sec_opts)
@@ -168,11 +168,11 @@ class BlockingTestEnvironment(TestEnvironment):
             from couchbase_columnar.common.core._certificates import _Certificates
             sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
 
-        if config.tls_verify is False:
+        if config.disable_server_certificate_verification is True:
             if sec_opts is not None:
-                sec_opts['verify_server_certificate'] = False
+                sec_opts['disable_server_certificate_verification'] = True
             else:
-                sec_opts = SecurityOptions(verify_server_certificate=False)
+                sec_opts = SecurityOptions(disable_server_certificate_verification=True)
 
         env_opts: TestEnvironmentOptionsKwargs = {}
         if sec_opts is not None:
@@ -253,11 +253,11 @@ class AsyncTestEnvironment(TestEnvironment):
             from couchbase_columnar.common.core._certificates import _Certificates
             sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
 
-        if self.config.tls_verify is False:
+        if self.config.disable_server_certificate_verification is True:
             if sec_opts is not None:
-                sec_opts['verify_server_certificate'] = False
+                sec_opts['disable_server_certificate_verification'] = True
             else:
-                sec_opts = SecurityOptions(verify_server_certificate=False)
+                sec_opts = SecurityOptions(disable_server_certificate_verification=True)
 
         if sec_opts is not None:
             opts = ClusterOptions(security_options=sec_opts)
@@ -278,11 +278,11 @@ class AsyncTestEnvironment(TestEnvironment):
             from couchbase_columnar.common.core._certificates import _Certificates
             sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
 
-        if config.tls_verify is False:
+        if config.disable_server_certificate_verification is True:
             if sec_opts is not None:
-                sec_opts['verify_server_certificate'] = False
+                sec_opts['disable_server_certificate_verification'] = True
             else:
-                sec_opts = SecurityOptions(verify_server_certificate=False)
+                sec_opts = SecurityOptions(disable_server_certificate_verification=True)
 
         env_opts: TestEnvironmentOptionsKwargs = {}
         if sec_opts is not None:

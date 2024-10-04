@@ -51,7 +51,6 @@ class ClusterOptions(ClusterOptionsBase):
         Options and methods marked **VOLATILE** are subject to change at any time.
 
     Args:
-        allow_unknown_qstr_options (Optional[bool]): **VOLATILE** If enabled, allows unknown query string options to pass through to C++ core. Defaults to `False` (disabled).
         config_poll_floor (Optional[timedelta]): Set to configure polling floor interval. Defaults to `None` (50ms).
         config_poll_interval (Optional[timedelta]): Set to configure polling floor interval. Defaults to `None` (2.5s).
         deserializer (Optional[Deserializer]): Set to configure global serializer to translate JSON to Python objects. Defaults to `None` (:class:`~couchbase_columnar.deserializer.DefaultJsonDeserializer`).
@@ -108,7 +107,7 @@ class SecurityOptions(SecurityOptionsBase):
 
     All options are optional and not required to be specified.  By default the SDK will trust only the Capella CA certificate(s).
     Only a single option related to which certificate(s) the SDK should trust can be used.
-    The `verify_server_certificate` option can either be enabled or disabled for any of the specified trust settings.
+    The `disable_server_certificate_verification` option can either be enabled or disabled for any of the specified trust settings.
 
     Args:
         trust_only_capella (Optional[bool]): If enabled, SDK will trust only the Capella CA certificate(s). Defaults to `True` (enabled).
@@ -116,10 +115,8 @@ class SecurityOptions(SecurityOptionsBase):
         trust_only_pem_str (Optional[str]): If set, SDK will trust only the PEM-encoded certificate(s) in the specified str. Defaults to `None`.
         trust_only_certificates (Optional[List[str]]): If set, SDK will trust only the PEM-encoded certificate(s) specified. Defaults to `None`.
         trust_only_platform (Optional[bool]): If enabled, SDK will trust only the platform certificate(s). Defaults to `None`.
-        verify_server_certificate (Optional[bool]): If disabled, SDK will trust any certificate regardless of validity.
+        disable_server_certificate_verification (Optional[bool]): If disabled, SDK will trust any certificate regardless of validity.
             Should not be disabled in production environments. Defaults to `True` (enabled).
-        cipher_suites (Optional[List[str]]): Names of TLS cipher suites the SDK is allowed to use while negotiating TLS settings.
-            An empty list indicates any cipher suite supported by the runtime environment may be used.  Defaults to `None` (empty list).
     """  # noqa: E501
 
     @classmethod
