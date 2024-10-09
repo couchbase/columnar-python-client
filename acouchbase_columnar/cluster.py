@@ -148,7 +148,7 @@ class AsyncCluster:
         """  # noqa: E501
         return self._impl.execute_query(statement, *args, **kwargs)
 
-    def close(self) -> None:
+    def shutdown(self) -> None:
         """Shuts down this cluster instance. Cleaning up all resources associated with it.
 
         .. warning::
@@ -157,7 +157,7 @@ class AsyncCluster:
             is necessary and in those types of applications, this method might be beneficial.
 
         """
-        return self._impl.close()
+        return self._impl.shutdown()
 
     @classmethod
     def create_instance(cls,

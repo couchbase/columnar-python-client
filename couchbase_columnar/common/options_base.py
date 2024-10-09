@@ -28,10 +28,14 @@ from typing import (Any,
                     Union)
 
 if sys.version_info < (3, 10):
-    from typing_extensions import TypeAlias
+    from typing_extensions import TypeAlias, Unpack
 else:
-    from typing import TypeAlias
-from typing_extensions import Unpack
+    if sys.version_info < (3, 11):
+        from typing import TypeAlias
+
+        from typing_extensions import Unpack
+    else:
+        from typing import TypeAlias, Unpack
 
 from couchbase_columnar.common import JSONType
 from couchbase_columnar.common.deserializer import Deserializer

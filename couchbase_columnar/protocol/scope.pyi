@@ -13,10 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import sys
 from concurrent.futures import Future, ThreadPoolExecutor
 from typing import overload
 
-from typing_extensions import Unpack
+if sys.version_info < (3, 11):
+    from typing_extensions import Unpack
+else:
+    from typing import Unpack
 
 from couchbase_columnar import JSONType
 from couchbase_columnar.common.result import BlockingQueryResult
