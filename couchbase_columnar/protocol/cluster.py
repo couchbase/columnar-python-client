@@ -68,7 +68,7 @@ class Cluster:
         """
         return self._tp_executor
 
-    def _close(self) -> None:
+    def _shutdown(self) -> None:
         """
             **INTERNAL**
         """
@@ -90,7 +90,7 @@ class Cluster:
             self._tp_executor.shutdown()
         self._tp_executor_shutdown_called = True
 
-    def close(self) -> None:
+    def shutdown(self) -> None:
         """Shuts down this cluster instance. Cleaning up all resources associated with it.
 
         .. warning::
@@ -100,7 +100,7 @@ class Cluster:
 
         """
         if self.has_connection:
-            self._close()
+            self._shutdown()
         else:
             # TODO: log warning and/or exception?
             print('Cluster does not have a connection.  Ignoring')

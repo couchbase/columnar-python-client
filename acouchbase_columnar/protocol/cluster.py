@@ -63,7 +63,7 @@ class AsyncCluster:
         """
         return self._client_adapter.has_connection
 
-    def _close(self) -> None:
+    def _shutdown(self) -> None:
         """
             **INTERNAL**
         """
@@ -78,7 +78,7 @@ class AsyncCluster:
         req = self._request_builder.build_connection_request()
         self._client_adapter.connect(req)
 
-    def close(self) -> None:
+    def shutdown(self) -> None:
         """Shuts down this cluster instance. Cleaning up all resources associated with it.
 
         .. warning::
@@ -88,7 +88,7 @@ class AsyncCluster:
 
         """
         if self.has_connection:
-            self._close()
+            self._shutdown()
         else:
             # TODO: log warning
             print('Cluster does not have a connection.  Ignoring')
