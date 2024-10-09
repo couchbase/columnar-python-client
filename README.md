@@ -1,36 +1,39 @@
 # Couchbase Python Columnar Client
 Python client for [Couchbase](https://couchbase.com) Columnar
 
->**IMPORTANT:** This client is currently under active development and the API is subject to change.
-
-Currently Python 3.8 - Python 3.11 is supported.  Python 3.12 support is coming soon.
+Currently Python 3.8 - Python 3.12 is supported.
 
 The Columnar SDK supports static typing.  Currently only [mypy](https://github.com/python/mypy) is supported.  You mileage may vary (YMMV) with the use of other static type checkers (e.g. [pyright](https://github.com/microsoft/pyright)).
 
 # Installing the SDK<a id="installing-the-sdk"></a>
 
-Eventually the SDK will be published to PyPI, but in the interim a select set of wheels are available on the [Releases page](https://github.com/couchbaselabs/columnar-python-client/releases).  If a wheel is not available for your specific Python version and/or platform, see the [BUILDING page](https://github.com/couchbaselabs/columnar-python-client/blob/main/BUILDING.md) for details on how to build the SDK's binary.
+Wheels are provided for linux, MacOS and Windows environments for supported Python versions (currently Python 3.8 - Python 3.12).
 
-To install the SDK from a wheel on the [Releases page](https://github.com/couchbaselabs/columnar-python-client/releases):
-1. Download the appropriate wheel
-2. Unzip the downloaded file
-3. Install via pip: `python3 -m pip install <path to unzipped wheel>`
-4. Install the `typing-extensions` dependency: `python3 -m pip install typing-extensions`
+>Note: It is strongly recommended to update pip, setuptools and wheel prior to installing the SDK: `python3 -m pip install --upgrade pip setuptools wheel`
+
+Install the SDK via `pip`:
+```console
+python3 -m pip install couchbase-columnar
+```
+
+# Installing the SDK from source
 
 If a compatible wheel is not available, the SDK's binary will need to be built from source:
+
 1. Follow the steps on the [BUILDING page](https://github.com/couchbaselabs/columnar-python-client/blob/main/BUILDING.md)
 2. After the build succeeds, the SDK can be used by running Python scripts from within the cloned repository or the SDK can be installed via pip: `python3 -m pip install <path to cloned repository>`
 4. Install the `typing-extensions` dependency: `python3 -m pip install typing-extensions`
 
+
 # Using the SDK<a id="using-the-sdk"></a>
+
+Some more examples are provided in the [examples directory](https://github.com/couchbaselabs/columnar-python-client/tree/main/examples).
 
 **Connecting and executing a query**
 ```python
 from couchbase_columnar.cluster import Cluster
 from couchbase_columnar.credential import Credential
-from couchbase_columnar.options import (ClusterOptions,
-                                        QueryOptions,
-                                        SecurityOptions)
+from couchbase_columnar.options import QueryOptions
 
 
 def main() -> None:
@@ -41,12 +44,7 @@ def main() -> None:
     # User Input ends here.
 
     cred = Credential.from_username_and_password(username, pw)
-    # Configure a secure connection to a Couchbase internal pre-production cluster.
-    # (Omit this when connecting to a production cluster!)
-    from couchbase_columnar.common.core._certificates import _Certificates
-    sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
-    opts = ClusterOptions(security_options=sec_opts)
-    cluster = Cluster.create_instance(connstr, cred, opts)
+    cluster = Cluster.create_instance(connstr, cred)
 
     # Execute a query and buffer all result rows in client memory.
     statement = 'SELECT * FROM `travel-sample`.inventory.airline LIMIT 10;'
@@ -89,9 +87,7 @@ if __name__ == '__main__':
 from acouchbase_columnar import get_event_loop
 from acouchbase_columnar.cluster import AsyncCluster
 from couchbase_columnar.credential import Credential
-from couchbase_columnar.options import (ClusterOptions,
-                                        QueryOptions,
-                                        SecurityOptions)
+from couchbase_columnar.options import QueryOptions
 
 
 async def main() -> None:
@@ -102,12 +98,7 @@ async def main() -> None:
     # User Input ends here.
 
     cred = Credential.from_username_and_password(username, pw)
-    # Configure a secure connection to a Couchbase internal pre-production cluster.
-    # (Omit this when connecting to a production cluster!)
-    from couchbase_columnar.common.core._certificates import _Certificates
-    sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
-    opts = ClusterOptions(security_options=sec_opts)
-    cluster = AsyncCluster.create_instance(connstr, cred, opts)
+    cluster = AsyncCluster.create_instance(connstr, cred)
 
     # Execute a query and buffer all result rows in client memory.
     statement = 'SELECT * FROM `travel-sample`.inventory.airline LIMIT 10;'

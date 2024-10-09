@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import sys
 from asyncio import AbstractEventLoop
 from typing import (TYPE_CHECKING,
                     Optional,
@@ -23,7 +24,11 @@ from typing import (TYPE_CHECKING,
 
 import pytest
 import pytest_asyncio
-from typing_extensions import Unpack
+
+if sys.version_info < (3, 11):
+    from typing_extensions import Unpack
+else:
+    from typing import Unpack
 
 from acouchbase_columnar import get_event_loop
 from acouchbase_columnar.cluster import AsyncCluster

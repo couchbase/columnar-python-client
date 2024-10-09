@@ -13,11 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from datetime import timedelta
+
 from couchbase_columnar.cluster import Cluster
 from couchbase_columnar.credential import Credential
 from couchbase_columnar.options import (ClusterOptions,
                                         QueryOptions,
-                                        SecurityOptions)
+                                        TimeoutOptions)
 
 
 def main() -> None:
@@ -28,12 +30,9 @@ def main() -> None:
     # User Input ends here.
 
     cred = Credential.from_username_and_password(username, pw)
-    # Configure a secure connection to a Couchbase internal pre-production cluster.
-    # (Omit this when connecting to a production cluster!)
-    from couchbase_columnar.common.core._certificates import _Certificates
-    sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
-    opts = ClusterOptions(security_options=sec_opts)
-    cluster = Cluster.create_instance(connstr, cred, opts)
+    # NOTE:  Only an example on how to use options.  Not a recommendation.
+    timeout_opts = TimeoutOptions(query_timeout=timedelta(seconds=30))
+    cluster = Cluster.create_instance(connstr, cred, ClusterOptions(timeout_options=timeout_opts))
 
     # Execute a query and buffer all result rows in client memory.
     statement = 'SELECT * FROM `travel-sample`.inventory.airline LIMIT 10;'

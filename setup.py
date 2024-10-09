@@ -50,6 +50,9 @@ setup(name='couchbase-columnar',
                 'build_ext': CMakeBuildExt,
                 'configure_ext': CMakeConfigureExt},
       python_requires='>=3.8',
+      install_requires=[
+          'typing-extensions~=4.11; python_version<"3.11"'
+      ],
       packages=find_packages(
           include=['acouchbase_columnar', 'couchbase_columnar', 'acouchbase_columnar.*', 'couchbase_columnar.*'],
           exclude=['acouchbase_columnar.tests', 'couchbase_columnar.tests']),

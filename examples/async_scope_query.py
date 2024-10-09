@@ -13,12 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+
+from datetime import timedelta
+
 from acouchbase_columnar import get_event_loop
 from acouchbase_columnar.cluster import AsyncCluster
 from acouchbase_columnar.credential import Credential
 from acouchbase_columnar.options import (ClusterOptions,
                                          QueryOptions,
-                                         SecurityOptions)
+                                         TimeoutOptions)
 
 
 async def main() -> None:
@@ -29,11 +32,9 @@ async def main() -> None:
     # User Input ends here.
 
     cred = Credential.from_username_and_password(username, pw)
-    # Configure a secure connection to a Couchbase internal pre-production cluster.
-    # (Omit this when connecting to a production cluster!)
-    from couchbase_columnar.common.core._certificates import _Certificates
-    sec_opts = SecurityOptions.trust_only_certificates(_Certificates.get_nonprod_certificates())
-    opts = ClusterOptions(security_options=sec_opts)
+    # NOTE:  Only an example on how to use options.  Not a recommendation.
+    timeout_opts = TimeoutOptions(query_timeout=timedelta(seconds=30))
+    opts = ClusterOptions(timeout_options=timeout_opts)
     scope = AsyncCluster.create_instance(connstr, cred, opts).database('travel-sample').scope('inventory')
 
     # Execute a scope-level query and buffer all result rows in client memory.
