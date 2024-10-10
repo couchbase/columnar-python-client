@@ -42,7 +42,6 @@ class ClusterOptionsKwargs(TypedDict, total=False):
     config_poll_floor: Optional[timedelta]
     config_poll_interval: Optional[timedelta]
     deserializer: Optional[Deserializer]
-    disable_mozilla_ca_certificates: Optional[bool]
     dns_nameserver: Optional[str]
     dns_port: Optional[int]
     dump_configuration: Optional[bool]
@@ -57,7 +56,6 @@ ClusterOptionsValidKeys: TypeAlias = Literal[
     'config_poll_floor',
     'config_poll_interval',
     'deserializer',
-    'disable_mozilla_ca_certificates',
     'dns_nameserver',
     'dns_port',
     'dump_configuration',
@@ -78,7 +76,6 @@ class ClusterOptionsBase(Dict[str, Any]):
         'config_poll_floor',
         'config_poll_interval',
         'deserializer',
-        'disable_mozilla_ca_certificates',
         'dns_nameserver',
         'dns_port',
         'dump_configuration',
@@ -100,7 +97,6 @@ class ClusterOptionsBase(Dict[str, Any]):
                  config_poll_floor: Optional[timedelta] = None,
                  config_poll_interval: Optional[timedelta] = None,
                  deserializer: Optional[Deserializer] = None,
-                 disable_mozilla_ca_certificates: Optional[bool] = None,
                  dns_nameserver: Optional[str] = None,
                  dns_port: Optional[int] = None,
                  dump_configuration: Optional[bool] = None,

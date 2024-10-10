@@ -1,5 +1,5 @@
 include *.txt LICENSE CONTRIBUTING.md BUILDING.md CMakeLists.txt pyproject.toml couchbase_columnar_version.py pycbcc_build_setup.py
-include columnar-sdk-python-black-duck-manifest.yaml
+include couchbase-sdk-columnar-python-black-duck-manifest.yaml
 include couchbase_columnar/common/core/nonprod_certificates/*.pem
 recursive-include couchbase_columnar *.py
 recursive-include acouchbase_columnar *.py
@@ -68,7 +68,6 @@ include deps/couchbase-cxx-cache/spdlog/*/spdlog/LICENSE
 include deps/couchbase-cxx-cache/spdlog/*/spdlog/cmake/*
 graft deps/couchbase-cxx-cache/spdlog/*/spdlog/include
 graft deps/couchbase-cxx-cache/spdlog/*/spdlog/src
-include deps/couchbase-cxx-cache/mozilla-ca-bundle.*
 include deps/couchbase-cxx-cache/json/*/json/CMakeLists.txt
 include deps/couchbase-cxx-cache/json/*/json/LICENSE*
 include deps/couchbase-cxx-cache/json/*/json/external/PEGTL/.cmake/*

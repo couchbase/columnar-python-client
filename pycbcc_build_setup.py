@@ -160,8 +160,7 @@ class CMakeConfig:
             cmake_config_args += ['-DCPM_DOWNLOAD_ALL=OFF',
                                   '-DCPM_USE_NAMED_CACHE_DIRECTORIES=ON',
                                   '-DCPM_USE_LOCAL_PACKAGES=OFF',
-                                  f'-DCPM_SOURCE_CACHE={CXXCBC_CACHE_DIR}',
-                                  f'-DCOUCHBASE_CXX_CLIENT_EMBED_MOZILLA_CA_BUNDLE_ROOT={CXXCBC_CACHE_DIR}"']
+                                  f'-DCPM_SOURCE_CACHE={CXXCBC_CACHE_DIR}']
 
         cb_cache_option = env.pop('PYCBCC_CB_CACHE_OPTION', None)
         if cb_cache_option is not None:

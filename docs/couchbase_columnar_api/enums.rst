@@ -19,8 +19,3 @@ IpProtocol
 ++++++++++++++++++++++++++++++++
 .. autoenum:: IpProtocol
     :no-index:
-
-KnownConfigProfiles
-++++++++++++++++++++++++++++++++
-.. autoenum:: KnownConfigProfiles
-    :no-index:
