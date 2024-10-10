@@ -22,12 +22,12 @@ from typing import (TYPE_CHECKING,
                     Optional,
                     Union)
 
-from couchbase_columnar.common.exceptions import ColumnarError, InternalSDKError
+from couchbase_columnar.common.errors import ColumnarError, InternalSDKError
 from couchbase_columnar.common.query import QueryMetadata
 from couchbase_columnar.common.result import AsyncQueryResult
 from couchbase_columnar.common.streaming import StreamingExecutor, StreamingState
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
-from couchbase_columnar.protocol.exceptions import CoreColumnarError, ErrorMapper
+from couchbase_columnar.protocol.errors import CoreColumnarError, ErrorMapper
 
 if TYPE_CHECKING:
     from asyncio import AbstractEventLoop

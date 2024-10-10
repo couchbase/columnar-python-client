@@ -33,7 +33,7 @@ else:
     from collections.abc import AsyncIterator as PyAsyncIterator
     from collections.abc import Iterator
 
-from couchbase_columnar.common.exceptions import ColumnarError, InternalSDKError
+from couchbase_columnar.common.errors import ColumnarError, InternalSDKError
 from couchbase_columnar.common.query import QueryMetadata
 
 

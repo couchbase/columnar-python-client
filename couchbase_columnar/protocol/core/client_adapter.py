@@ -32,12 +32,12 @@ else:
 
 from couchbase_columnar.common.credential import Credential
 from couchbase_columnar.common.deserializer import Deserializer
-from couchbase_columnar.common.exceptions import ColumnarError, InternalSDKError
+from couchbase_columnar.common.errors import ColumnarError, InternalSDKError
 from couchbase_columnar.protocol.connection import _ConnectionDetails
 from couchbase_columnar.protocol.core.client import _CoreClient
 from couchbase_columnar.protocol.core.request import CloseConnectionRequest, ConnectRequest
 from couchbase_columnar.protocol.core.result import CoreResult
-from couchbase_columnar.protocol.exceptions import CoreColumnarError, ErrorMapper
+from couchbase_columnar.protocol.errors import CoreColumnarError, ErrorMapper
 from couchbase_columnar.protocol.options import OptionsBuilder
 
 ReqT = TypeVar('ReqT', ConnectRequest, CloseConnectionRequest)

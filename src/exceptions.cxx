@@ -82,8 +82,7 @@ create_core_error_obj()
 PyObject*
 get_core_error_instance(core_error* core_err)
 {
-  PyObject* pyObj_protocol_exc_module =
-    PyImport_ImportModule("couchbase_columnar.protocol.exceptions");
+  PyObject* pyObj_protocol_exc_module = PyImport_ImportModule("couchbase_columnar.protocol.errors");
   if (pyObj_protocol_exc_module == nullptr) {
     PyErr_Clear();
     return nullptr;

@@ -22,11 +22,11 @@ from typing import TYPE_CHECKING
 import pytest
 
 from acouchbase_columnar.credential import Credential
-from acouchbase_columnar.exceptions import (InvalidCredentialError,
-                                            QueryError,
-                                            TimeoutError)
+from acouchbase_columnar.errors import (InvalidCredentialError,
+                                        QueryError,
+                                        TimeoutError)
 from acouchbase_columnar.options import QueryOptions
-from couchbase_columnar.protocol.exceptions import CoreColumnarError
+from couchbase_columnar.protocol.errors import CoreColumnarError
 from tests import YieldFixture
 
 if TYPE_CHECKING:

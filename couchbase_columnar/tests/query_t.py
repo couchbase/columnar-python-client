@@ -25,7 +25,7 @@ import pytest
 
 from couchbase_columnar.common.streaming import StreamingState
 from couchbase_columnar.deserializer import PassthroughDeserializer
-from couchbase_columnar.exceptions import QueryError
+from couchbase_columnar.errors import QueryError
 from couchbase_columnar.options import QueryOptions
 from couchbase_columnar.query import CancelToken, QueryScanConsistency
 from couchbase_columnar.result import BlockingQueryResult

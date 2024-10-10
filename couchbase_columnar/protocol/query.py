@@ -22,15 +22,15 @@ from typing import (TYPE_CHECKING,
                     Optional,
                     Union)
 
-from couchbase_columnar.common.exceptions import (ColumnarError,
-                                                  InternalSDKError,
-                                                  QueryOperationCanceledError)
+from couchbase_columnar.common.errors import (ColumnarError,
+                                              InternalSDKError,
+                                              QueryOperationCanceledError)
 from couchbase_columnar.common.query import CancelToken, QueryMetadata
 from couchbase_columnar.common.streaming import StreamingExecutor, StreamingState
 from couchbase_columnar.protocol.core.result import CoreQueryIterator
-from couchbase_columnar.protocol.exceptions import (ClientError,
-                                                    CoreColumnarError,
-                                                    ErrorMapper)
+from couchbase_columnar.protocol.errors import (ClientError,
+                                                CoreColumnarError,
+                                                ErrorMapper)
 
 if TYPE_CHECKING:
     from couchbase_columnar.protocol.core.client import _CoreClient

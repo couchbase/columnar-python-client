@@ -21,7 +21,7 @@ from typing import (Any,
 
 from couchbase_columnar.common.core.query import QueryMetadataCore
 from couchbase_columnar.protocol.core import PyCapsuleType
-from couchbase_columnar.protocol.exceptions import CoreColumnarError
+from couchbase_columnar.protocol.errors import CoreColumnarError
 
 CXXCBC_METADATA: str
 

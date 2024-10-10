@@ -29,9 +29,9 @@ else:
     from typing import TypeAlias
 
 from couchbase_columnar.common.core.utils import is_null_or_empty
-from couchbase_columnar.common.exceptions import (ColumnarError,
-                                                  InternalSDKError,
-                                                  QueryOperationCanceledError)
+from couchbase_columnar.common.errors import (ColumnarError,
+                                              InternalSDKError,
+                                              QueryOperationCanceledError)
 from couchbase_columnar.protocol.pycbcc_core import core_error
 
 CoreError: TypeAlias = core_error
@@ -114,7 +114,7 @@ class ClientErrorMap(Enum):
 
 
 PYCBCC_CORE_ERROR_MAP: Dict[int, type[ColumnarError]] = {
-    e.value: getattr(sys.modules['couchbase_columnar.common.exceptions'], e.name) for e in CoreErrorMap
+    e.value: getattr(sys.modules['couchbase_columnar.common.errors'], e.name) for e in CoreErrorMap
 }
 
 PYCBCC_CLIENT_ERROR_MAP: Dict[int, type[ClientError]] = {

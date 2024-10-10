@@ -5,7 +5,7 @@ Errors
 .. contents::
     :local:
 
-.. module:: couchbase_columnar.exceptions
+.. module:: couchbase_columnar.errors
 
 
 ColumnarError

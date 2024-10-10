@@ -24,7 +24,7 @@ import pytest
 import pytest_asyncio
 
 from acouchbase_columnar.deserializer import PassthroughDeserializer
-from acouchbase_columnar.exceptions import QueryError
+from acouchbase_columnar.errors import QueryError
 from acouchbase_columnar.options import QueryOptions
 from acouchbase_columnar.result import AsyncQueryResult
 from couchbase_columnar.common.streaming import StreamingState
