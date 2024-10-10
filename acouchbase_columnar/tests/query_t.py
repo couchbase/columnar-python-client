@@ -21,13 +21,14 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import pytest
+import pytest_asyncio
 
 from acouchbase_columnar.deserializer import PassthroughDeserializer
 from acouchbase_columnar.exceptions import QueryError
 from acouchbase_columnar.options import QueryOptions
 from acouchbase_columnar.result import AsyncQueryResult
 from couchbase_columnar.common.streaming import StreamingState
-from tests import YieldFixture
+from tests import AsyncYieldFixture
 
 if TYPE_CHECKING:
     from tests.environments.base_environment import AsyncTestEnvironment
@@ -268,10 +269,13 @@ class ClusterQueryTests(QueryTestSuite):
         if test_list:
             pytest.fail(f'Test manifest invalid.  Missing/extra tests: {test_list}.')
 
-    @pytest.fixture(scope='class', name='test_env')
-    def couchbase_test_environment(self,
-                                   async_test_env: AsyncTestEnvironment) -> YieldFixture[AsyncTestEnvironment]:
+    @pytest_asyncio.fixture(scope='class', name='test_env')
+    async def couchbase_test_environment(self,
+                                         async_test_env: AsyncTestEnvironment
+                                         ) -> AsyncYieldFixture[AsyncTestEnvironment]:
+        await async_test_env.setup()
         yield async_test_env
+        await async_test_env.teardown()
 
 
 class ScopeQueryTests(QueryTestSuite):
@@ -286,9 +290,12 @@ class ScopeQueryTests(QueryTestSuite):
         if test_list:
             pytest.fail(f'Test manifest invalid.  Missing/extra tests: {test_list}.')
 
-    @pytest.fixture(scope='class', name='test_env')
-    def couchbase_test_environment(self,
-                                   async_test_env: AsyncTestEnvironment) -> YieldFixture[AsyncTestEnvironment]:
+    @pytest_asyncio.fixture(scope='class', name='test_env')
+    async def couchbase_test_environment(self,
+                                         async_test_env: AsyncTestEnvironment
+                                         ) -> AsyncYieldFixture[AsyncTestEnvironment]:
+        await async_test_env.setup()
         test_env = async_test_env.enable_scope()
         yield test_env
         test_env.disable_scope()
+        await test_env.teardown()

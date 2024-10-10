@@ -3,58 +3,225 @@ name: publish
 on:
   workflow_dispatch:
     inputs:
-      is_release:
-        description: "Set to true if a release version."
-        required: true
-        default: false
-        type: boolean
       sha:
         description: "The git SHA to use for release.  Only set if needing to publish"
-        required: false
+        required: true
         default: ""
         type: string
       version:
         description: "The Release version.  Allowed format: x.y.z[-alphaN | -betaN | -rcN | -devN | -postN]"
+        required: true
+        default: ""
+        type: string
+      wheels_run_id:
+        description: "The workflow run ID of a build_wheels workflow run.  Set if wanting to use wheels from an already completed run."
         required: false
         default: ""
         type: string
+      test_input:
+        description: "JSON formatted object representing test input."
+        required: false
+        default: ""
+        type: string
+      publish_input:
+        description: "JSON formatted object representing publish options."
+        required: false
+        default: "{\"PUBLISH_TEST_PYPI\": true, \"PUBLISH_PYPI\": true, \"PUBLISH_API_DOCS\": true, \"SKIP_TESTS\": false}"
+        type: string
+
+env:
+  DEFAULT_PYTHON: "3.8"
+  PYTHON_VERSIONS: "3.8,3.9,3.10,3.11,3.12"
+  X86_64_PLATFORMS: "manylinux2014,musllinux_1_1,macosx,win"
+  ARM64_PLATFORMS: "manylinux2014,macosx"
 
 jobs:
   validate-input:
     runs-on: ubuntu-22.04
     steps:
-      - name: If release, verify SHA is provided
-        if: inputs.is_release && inputs.sha == ''
+      - name: Verify SHA is provided
+        if: inputs.sha == ''
         run: |
-          echo "::error If releasing, must provide a SHA."
+          echo "::error Must provide a SHA."
           exit 1
-      - name: If release, verify SHA is provided
-        if: inputs.is_release && inputs.version == ''
+      - name: Verify SHA is correct length
         run: |
-          echo "::error If releasing, must provide a version."
+          echo '"${{ inputs.sha }}"' | jq -e '. | length == 40'
+      - name: Verify version is provided
+        if: inputs.version == ''
+        run: |
+          echo "::error Must provide a version."
           exit 1
+
+
+  output-publish-params:
+    runs-on: ubuntu-22.04
+    needs: validate-input
+    outputs:
+      publish_test_pypi: ${{ steps.output-publish-params.outputs.publish_test_pypi }}
+      publish_pypi: ${{ steps.output-publish-params.outputs.publish_pypi }}
+      publish_api_docs: ${{ steps.output-publish-params.outputs.publish_api_docs }}
+      skip_tests: ${{ steps.output-publish-params.outputs.skip_tests }}
+    steps:
+      - name: Output Publish parameters
+        id: output-publish-params
+        run: |
+          export $(echo '${{ inputs.publish_input }}' | jq -r '. | to_entries[] | join("=")')
+          echo "PUBLISH_TEST_PYPI=$PUBLISH_TEST_PYPI"
+          echo "PUBLISH_PYPI=$PUBLISH_PYPI"
+          echo "PUBLISH_API_DOCS=$PUBLISH_API_DOCS"
+          echo "SKIP_TESTS=$SKIP_TESTS"
+          echo "publish_test_pypi=$PUBLISH_TEST_PYPI" >> $GITHUB_OUTPUT
+          echo "publish_pypi=$PUBLISH_PYPI" >> $GITHUB_OUTPUT
+          echo "publish_api_docs=$PUBLISH_API_DOCS" >> $GITHUB_OUTPUT
+          echo "skip_tests=$SKIP_TESTS" >> $GITHUB_OUTPUT
+
 
   build-wheels:
-    uses: ./.github/workflows/build_wheels.yaml
+    if: ${{ inputs.wheels_run_id == '' }}
+    needs: validate-input
+    uses: ./.github/workflows/build_wheels.yml
     with:
-      is_release: ${{ inputs.is_release }}
-      sha: ${{ inputs.is_release }}
-      version: ${{ inputs.is_release }}
+      is_release: true
+      sha: ${{ inputs.sha && inputs.sha || '' }}
+      version: ${{ inputs.version && inputs.version || '' }}
+      cxx_change: ${{ inputs.cxx_change && inputs.cxx_change || '' }}
 
-  upload_test_pypi:
-    name: Upload to test PyPI (test)
-    needs: build-wheels
+
+  set-wheels-run-id:
     runs-on: ubuntu-22.04
+    needs: build-wheels
+    outputs:
+      wheels_run_id: ${{ inputs.wheels_run_id == '' && steps.save_wheels_run_id.outputs.wheels_run_id || inputs.wheels_run_id }}
+    if: |
+      always()
+      && (needs.build-wheels.result == 'success' || needs.build-wheels.result == 'skipped')
+    steps:
+      - name: Save wheels_run_id
+        if: ${{ inputs.wheels_run_id == '' }}
+        id: save_wheels_run_id
+        run: |
+          echo "wheels_run_id=${{ needs.build-wheels.outputs.workflow_run_id }}" >> $GITHUB_OUTPUT
+
+
+  tests:
+    needs: [build-wheels, set-wheels-run-id, output-publish-params]
+    if: |
+      always()
+      && (needs.build-wheels.result == 'success' || needs.build-wheels.result == 'skipped')
+      && needs.set-wheels-run-id.result == 'success'
+      && needs.output-publish-params.result == 'success'
+      && needs.output-publish-params.outputs.skip_tests == 'false'
+    uses: ./.github/workflows/tests.yml
+    with:
+      is_release: true
+      sha: ${{ inputs.sha && inputs.sha || '' }}
+      version: ${{ inputs.version && inputs.version || '' }}
+      cxx_change: ${{ inputs.cxx_change && inputs.cxx_change || '' }}
+      wheels_run_id: ${{ needs.set-wheels-run-id.outputs.wheels_run_id }}
+      test_input: ${{ inputs.test_input && inputs.test_input || '' }}
+
+
+  upload-api-docs:
+    name: Upload API docs as artifact
+    needs: [build-wheels, tests]
+    if: |
+      always()
+      && (needs.build-wheels.result == 'success' || needs.build-wheels.result == 'skipped')
+      && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout (with SHA)
+        if: inputs.sha != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+          fetch-depth: 0
+      - name: Checkout (no SHA)
+        if: inputs.sha == ''
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        if: ${{ inputs.wheels_run_id == '' }}
+        with:
+          name: manylinux-x86_64-python3.8-shared-object
+          run-id: ${{ needs.build-wheels.outputs.workflow_run_id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        if: ${{ inputs.wheels_run_id != '' }}
+        with:
+          name: manylinux-x86_64-python3.8-shared-object
+          run-id: ${{ inputs.wheels_run_id }}
+          github-token: ${{ github.token }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Setup API docs
+        if: inputs.version != ''
+        run: |
+          git config user.name "Couchbase SDK Team"
+          git config user.email "sdk_dev@couchbase.com"
+          git tag -a $PYCBCC_VERSION -m "Release of client version $PYCBCC_VERSION"
+          python couchbase_columnar_version.py --mode make
+          ls -alh
+          mv pycbcc_core.so couchbase_columnar/protocol
+        env:
+          PYCBCC_VERSION: ${{ inputs.version }}
+      - name: Setup API docs
+        if: inputs.version == ''
+        run: |
+          python couchbase_columnar_version.py --mode make
+          ls -alh
+          mv pycbcc_core.so couchbase_columnar/protocol
+      - name: Build API docs
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r sphinx_requirements.txt
+          mkdir sphinx
+          sphinx-build -M html ./docs ./sphinx
+      - name: Upload Python API docs as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-api-docs
+          path: sphinx/
+
+
+  publish-test-pypi:
+    name: Publish SDK to test PyPI
+    needs: [build-wheels, tests, output-publish-params]
+    if: |
+      always()
+      && (needs.build-wheels.result == 'success' || needs.build-wheels.result == 'skipped')
+      && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
+      && needs.output-publish-params.result == 'success'
+      && needs.output-publish-params.outputs.publish_test_pypi == 'true'
+    runs-on: ubuntu-22.04
+    environment: publish
     # permissions:
     #   # This permission is required for pypi's "trusted publisher" feature
     #   id-token: write
     steps:
       - uses: actions/download-artifact@v4
+        if: ${{ inputs.wheels_run_id == '' }}
         with:
           pattern: pycbcc-artifact-*
           path: dist
           merge-multiple: true
           run-id: ${{ needs.build-wheels.outputs.workflow_run_id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        if: ${{ inputs.wheels_run_id != '' }}
+        with:
+          pattern: pycbcc-artifact-*
+          path: dist
+          merge-multiple: true
+          run-id: ${{ inputs.wheels_run_id }}
+          github-token: ${{ github.token }}
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -77,3 +244,105 @@ jobs:
         run: |
           ls -alh dist
           twine check dist/*
+
+
+  validate-test-pypi:
+    name: Validate SDK on test PyPI
+    needs: [publish-test-pypi]
+    if: |
+      always()
+      && needs.publish-test-pypi.result == 'success'
+      && needs.publish-test-pypi.result != 'skipped'
+    uses: ./.github/workflows/verify_release.yml
+    with:
+      version: ${{ inputs.version }}
+      packaging_index: "TEST_PYPI"
+      test_input: ${{ inputs.test_input }}
+
+
+  publish-pypi:
+    name: Publish SDK to PyPI
+    needs: [build-wheels, tests, output-publish-params, validate-test-pypi]
+    if: |
+      always()
+      && (needs.build-wheels.result == 'success' || needs.build-wheels.result == 'skipped')
+      && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
+      && needs.output-publish-params.result == 'success'
+      && needs.output-publish-params.outputs.publish_pypi == 'true'
+    runs-on: ubuntu-22.04
+    environment: publish
+    steps:
+      - uses: actions/download-artifact@v4
+        if: ${{ inputs.wheels_run_id == '' }}
+        with:
+          pattern: pycbcc-artifact-*
+          path: dist
+          merge-multiple: true
+          run-id: ${{ needs.build-wheels.outputs.workflow_run_id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        if: ${{ inputs.wheels_run_id != '' }}
+        with:
+          pattern: pycbcc-artifact-*
+          path: dist
+          merge-multiple: true
+          run-id: ${{ inputs.wheels_run_id }}
+          github-token: ${{ github.token }}
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel twine
+      - name: Download CI wheel checks
+        run: |
+          curl -o check_wheels.py ${CI_SCRIPTS_URL}/ci_scripts/check_wheels.py
+        env:
+          CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
+      - name: Check wheels
+        run: |
+          cd dist
+          python ../check_wheels.py -versions=$PYTHON_VERSIONS -x86_64=$X86_64_PLATFORMS -arm64=$ARM64_PLATFORMS
+      - name: Twine validate
+        run: |
+          ls -alh dist
+          twine check dist/*
+
+
+  validate-pypi:
+    name: Validate SDK on PyPI
+    needs: [publish-pypi]
+    if: |
+      always()
+      && needs.publish-pypi.result == 'success'
+      && needs.publish-pypi.result != 'skipped'
+    uses: ./.github/workflows/verify_release.yml
+    with:
+      version: ${{ inputs.version }}
+      packaging_index: "PYPI"
+      test_input: ${{ inputs.test_input }}
+
+
+  publish-api-docs:
+    name: Publish SDK API docs
+    needs: [upload-api-docs, validate-pypi]
+    environment: publish
+    if: |
+      always()
+      && (needs.build-wheels.result == 'success' || needs.build-wheels.result == 'skipped')
+      && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
+      && needs.output-publish-params.result == 'success'
+      && needs.output-publish-params.outputs.publish_api_docs == 'true'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download API docs
+        uses: actions/download-artifact@v4
+        with:
+          name: pycbcc-api-docs
+      - name: Publish API docs to S3
+        run: |
+          export SPHINX_DIR=${{ github.workspace }}/html
+          ls -alh $SPHINX_DIR

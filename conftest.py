@@ -23,11 +23,24 @@ pytest_plugins = [
 ]
 
 _UNIT_TESTS = [
-    'couchbase_columnar/tests/connection_t.py::ConnectionTests'
+    'acouchbase_columnar/tests/connection_t.py::ConnectionTests',
+    'acouchbase_columnar/tests/options_t.py::ClusterOptionsTests',
+    'acouchbase_columnar/tests/query_options_t.py::ClusterQueryOptionsTests',
+    'acouchbase_columnar/tests/query_options_t.py::ScopeQueryOptionsTests',
+    'couchbase_columnar/tests/binding_errors_t.py::BindingErrorTests',
+    'couchbase_columnar/tests/connection_t.py::ConnectionTests',
+    'couchbase_columnar/tests/options_t.py::ClusterOptionsTests',
+    'couchbase_columnar/tests/query_options_t.py::ClusterQueryOptionsTests',
+    'couchbase_columnar/tests/query_options_t.py::ScopeQueryOptionsTests',
 ]
 
 _INTEGRATRION_TESTS = [
-    'couchbase_columnar/tests/query_t.py::QueryTests'
+    'acouchbase_columnar/tests/error_t.py::ErrorTests',
+    'acouchbase_columnar/tests/query_t.py::ClusterQueryTests',
+    'acouchbase_columnar/tests/query_t.py::ScopeQueryTests',
+    'couchbase_columnar/tests/errors_t.py::ErrorTests',
+    'couchbase_columnar/tests/query_t.py::ClusterQueryTests',
+    'couchbase_columnar/tests/query_t.py::ScopeQueryTests',
 ]
 
 # https://docs.pytest.org/en/7.4.x/reference/reference.html#pytest.hookspec.pytest_collection_modifyitems

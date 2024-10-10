@@ -19,10 +19,11 @@ import os
 import pathlib
 from configparser import ConfigParser
 from typing import Tuple
+from uuid import uuid4
 
 import pytest
 
-from tests import ColumnarTestEnvironmentException
+from tests import ColumnarTestEnvironmentError
 
 BASEDIR = pathlib.Path(__file__).parent.parent
 CONFIG_FILE = os.path.join(pathlib.Path(__file__).parent, "test_config.ini")
@@ -37,10 +38,11 @@ class ColumnarConfig:
         self._username = 'Administrator'
         self._password = 'password'
         self._nonprod = False
-        self._database_name = 'travel-sample'
-        self._scope_name = 'inventory'
-        self._collection_name = 'airline'
+        self._database_name = ''
+        self._scope_name = ''
+        self._collection_name = ''
         self._disable_server_certificate_verification = False
+        self._create_keyspace = True
 
     @property
     def database_name(self) -> str:
@@ -49,6 +51,10 @@ class ColumnarConfig:
     @property
     def collection_name(self) -> str:
         return self._collection_name
+
+    @property
+    def create_keyspace(self) -> bool:
+        return self._create_keyspace
 
     @property
     def fqdn(self) -> str:
@@ -80,7 +86,7 @@ class ColumnarConfig:
             test_config.read(CONFIG_FILE)
             test_config_columnar = test_config['columnar']
             columnar_config._scheme = os.environ.get('PYCBCC_SCHEME',
-                                                     test_config_columnar.get('scheme', fallback='couchbase'))
+                                                     test_config_columnar.get('scheme', fallback='couchbases'))
             columnar_config._host = os.environ.get('PYCBCC_HOST',
                                                    test_config_columnar.get('host', fallback='localhost'))
             port = os.environ.get('PYCBCC_PORT', test_config_columnar.get('port', fallback='8091'))
@@ -107,9 +113,25 @@ class ColumnarConfig:
                                                                                 fallback='ON'))
             if disable_cert_verification.lower() in ENV_TRUE:
                 columnar_config._disable_server_certificate_verification = True
+            fqdn = os.environ.get('PYCBCC_FQDN', test_config_columnar.get('fqdn', fallback=None))
+            if fqdn is not None:
+                fqdn_tokens = fqdn.split('.')
+                if len(fqdn_tokens) != 3:
+                    raise ColumnarTestEnvironmentError(('Invalid FQDN provided. Expected database.scope.collection. '
+                                                        f'FQDN provide={fqdn}'))
+
+                columnar_config._database_name = f'{fqdn_tokens[0]}'
+                columnar_config._scope_name = f'{fqdn_tokens[1]}'
+                columnar_config._collection_name = f'{fqdn_tokens[2]}'
+                columnar_config._create_keyspace = False
+            else:
+                # lets make the database unique (enough)
+                columnar_config._database_name = f'travel-sample-{str(uuid4())[:8]}'
+                columnar_config._scope_name = 'inventory'
+                columnar_config._collection_name = 'airline'
 
         except Exception as ex:
-            raise ColumnarTestEnvironmentException(f'Problem trying read/load test configuration:\n{ex}')
+            raise ColumnarTestEnvironmentError(f'Problem trying read/load test configuration:\n{ex}')
 
         return columnar_config
 
