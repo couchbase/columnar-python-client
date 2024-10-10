@@ -24,8 +24,6 @@ if sys.version_info < (3, 10):
 else:
     from typing import TypeAlias
 
-from couchbase_columnar.common.config_profile import CONFIG_PROFILES
-from couchbase_columnar.common.enums import KnownConfigProfiles
 from couchbase_columnar.common.options_base import ClusterOptionsBase
 from couchbase_columnar.common.options_base import ClusterOptionsKwargs as ClusterOptionsKwargs  # noqa: F401
 from couchbase_columnar.common.options_base import QueryOptionsBase
@@ -54,7 +52,6 @@ class ClusterOptions(ClusterOptionsBase):
         config_poll_floor (Optional[timedelta]): Set to configure polling floor interval. Defaults to `None` (50ms).
         config_poll_interval (Optional[timedelta]): Set to configure polling floor interval. Defaults to `None` (2.5s).
         deserializer (Optional[Deserializer]): Set to configure global serializer to translate JSON to Python objects. Defaults to `None` (:class:`~couchbase_columnar.deserializer.DefaultJsonDeserializer`).
-        disable_mozilla_ca_certificates (Optional[bool]): If enabled, prevents the C++ core from loading Mozilla certificates. Defaults to `False` (disabled).
         dns_nameserver (Optional[str]): **VOLATILE** This API is subject to change at any time. Set to configure custom DNS nameserver. Defaults to `None`.
         dns_port (Optional[int]): **VOLATILE** This API is subject to change at any time. Set to configure custom DNS port. Defaults to `None`.
         dump_configuration (Optional[bool]): If enabled, dump received server configuration when TRACE level logging. Defaults to `False` (disabled).
@@ -65,41 +62,6 @@ class ClusterOptions(ClusterOptionsBase):
         timeout_options (Optional[:class:`.TimeoutOptions`]): Timeout options for various SDK operations. See :class:`.TimeoutOptions` for details.
         user_agent_extra (Optional[str]): Set to add further details to identification fields in server protocols. Defaults to `None` (`{Python SDK version} (python/{Python version})`).
     """  # noqa: E501
-
-    def apply_profile(self, profile_name: Union[KnownConfigProfiles, str]) -> None:
-        """
-        **VOLATILE** This API is subject to change at any time.
-
-        Apply the provided ConfigProfile options.
-
-        Args:
-            profile_name ([:class:`~couchbase_columnar.options.KnownConfigProfiles`, str]):  The name of the profile to apply
-                toward ClusterOptions.
-
-        Raises:
-            `ValueError`: If the specified profile is not registered.
-
-        """  # noqa: E501
-        prof_name = profile_name.value if isinstance(profile_name, KnownConfigProfiles) else profile_name
-        CONFIG_PROFILES.apply_profile(prof_name, self)
-
-    @classmethod
-    def create_options_with_profile(cls, profile_name: Union[KnownConfigProfiles, str]) -> ClusterOptions:
-        """
-        **VOLATILE** This API is subject to change at any time.
-
-        Create a ClusterOptions instance and apply the provided ConfigProfile options.
-
-        Args:
-            profile_name ([:class:`~couchbase_columnar.options.KnownConfigProfiles`, str]):  The name of the profile to apply toward ClusterOptions.
-
-        Raises:
-            `ValueError`: If the specified profile is not registered.
-
-        """  # noqa: E501
-        opts = cls()
-        opts.apply_profile(profile_name)
-        return opts
 
 
 class SecurityOptions(SecurityOptionsBase):

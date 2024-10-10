@@ -18,7 +18,3 @@ QueryScanConsistency
 IpProtocol
 ++++++++++++++++++++++++++++++++
 .. autoenum:: IpProtocol
-
-KnownConfigProfiles
-++++++++++++++++++++++++++++++++
-.. autoenum:: KnownConfigProfiles

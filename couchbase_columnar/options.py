@@ -14,7 +14,6 @@
 #  limitations under the License.
 
 from couchbase_columnar.common.enums import IpProtocol as IpProtocol  # noqa: F401
-from couchbase_columnar.common.enums import KnownConfigProfiles as KnownConfigProfiles  # noqa: F401
 from couchbase_columnar.common.options import ClusterOptions as ClusterOptions  # noqa: F401
 from couchbase_columnar.common.options import ClusterOptionsKwargs as ClusterOptionsKwargs  # noqa: F401
 from couchbase_columnar.common.options import QueryOptions as QueryOptions  # noqa: F401

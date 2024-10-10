@@ -63,7 +63,6 @@ class ClusterOptionsTransforms(TypedDict):
     config_poll_floor: Dict[Literal['config_poll_floor'], Callable[[Any], int]]
     config_poll_interval: Dict[Literal['config_poll_interval'], Callable[[Any], int]]
     deserializer: Dict[Literal['deserializer'], Callable[[Any], Deserializer]]
-    disable_mozilla_ca_certificates: Dict[Literal['disable_mozilla_ca_certificates'], Callable[[Any], bool]]
     dns_nameserver: Dict[Literal['dns_nameserver'], Callable[[Any], str]]
     dns_port: Dict[Literal['dns_port'], Callable[[Any], int]]
     dump_configuration: Dict[Literal['dump_configuration'], Callable[[Any], bool]]
@@ -79,7 +78,6 @@ CLUSTER_OPTIONS_TRANSFORMS: ClusterOptionsTransforms = {
     'config_poll_floor': {'config_poll_floor': timedelta_as_microseconds},
     'config_poll_interval': {'config_poll_interval': timedelta_as_microseconds},
     'deserializer': {'deserializer': VALIDATE_DESERIALIZER},
-    'disable_mozilla_ca_certificates': {'disable_mozilla_ca_certificates': VALIDATE_BOOL},
     'dns_nameserver': {'dns_nameserver': VALIDATE_STR},
     'dns_port': {'dns_port': VALIDATE_INT},
     'dump_configuration': {'dump_configuration': VALIDATE_BOOL},
@@ -96,7 +94,6 @@ class ClusterOptionsTransformedKwargs(TypedDict, total=False):
     config_poll_floor: Optional[int]
     config_poll_interval: Optional[int]
     deserializer: Optional[Deserializer]
-    disable_mozilla_ca_certificates: Optional[bool]
     dns_nameserver: Optional[str]
     dns_port: Optional[int]
     dump_configuration: Optional[bool]

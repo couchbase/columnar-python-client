@@ -142,6 +142,9 @@ set(COUCHBASE_CXX_CLIENT_BUILD_TESTS
 set(COUCHBASE_CXX_CLIENT_BUILD_TOOLS
     OFF
     CACHE BOOL "" FORCE)
+set(COUCHBASE_CXX_CLIENT_EMBED_MOZILLA_CA_BUNDLE
+    FALSE
+    CACHE BOOL "" FORCE)
 
 # cmake-format: off
 # PYCBC-1374 + PYCBC-1495: Move to dynamically link against static stdlib to avoid issues with:
@@ -175,11 +178,6 @@ set(COUCHBASE_CXX_BINARY_DIR "${CMAKE_BINARY_DIR}/deps/couchbase-cxx-client")
 set(COUCHBASE_CXX_SOURCE_DIR "${PROJECT_SOURCE_DIR}/deps/couchbase-cxx-client")
 message(STATUS "COUCHBASE_CXX_BINARY_DIR=${COUCHBASE_CXX_BINARY_DIR}")
 message(STATUS "COUCHBASE_CXX_SOURCE_DIR=${COUCHBASE_CXX_SOURCE_DIR}")
-if(DEFINED COUCHBASE_CXX_CPM_CACHE_DIR AND NOT COUCHBASE_CXX_CPM_CACHE_DIR STREQUAL "")
-  file(COPY "${COUCHBASE_CXX_BINARY_DIR}/mozilla-ca-bundle.crt" "${COUCHBASE_CXX_BINARY_DIR}/mozilla-ca-bundle.sha256"
-    DESTINATION "${COUCHBASE_CXX_CPM_CACHE_DIR}")
-  message(STATUS "Copied Mozilla cert bundle to cache.  COUCHBASE_CXX_CPM_CACHE_DIR=${COUCHBASE_CXX_CPM_CACHE_DIR}")
-endif()
 
 if(Python3_FOUND)
   message(STATUS "Python executable: ${Python3_EXECUTABLE}")
