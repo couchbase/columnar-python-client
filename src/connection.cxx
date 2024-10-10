@@ -373,13 +373,6 @@ update_cluster_options(couchbase::core::cluster_options& options,
     options.security_options.trust_only_pem_file = true;
   }
 
-  PyObject* pyObj_disable_mozilla_ca_certificates =
-    PyDict_GetItemString(pyObj_options, "disable_mozilla_ca_certificates");
-  if (pyObj_disable_mozilla_ca_certificates != nullptr &&
-      pyObj_disable_mozilla_ca_certificates == Py_True) {
-    options.disable_mozilla_ca_certificates = true;
-  }
-
   PyObject* pyObj_use_ip_protocol = PyDict_GetItemString(pyObj_options, "use_ip_protocol");
   if (pyObj_use_ip_protocol != nullptr) {
     options.use_ip_protocol =
@@ -723,13 +716,6 @@ handle_create_connection_test([[maybe_unused]] PyObject* self, PyObject* args, P
   Py_XDECREF(pyObj_credentials);
 
   PyObject* pyObj_general_opts = PyDict_New();
-  if (-1 == PyDict_SetItemString(pyObj_general_opts,
-                                 "disable_mozilla_ca_certificates",
-                                 opts.disable_mozilla_ca_certificates ? Py_True : Py_False)) {
-    PyErr_Print();
-    PyErr_Clear();
-  }
-
   pyObj_tmp = ip_protocol_to_pyObj(opts.use_ip_protocol);
   if (-1 == PyDict_SetItemString(pyObj_general_opts, "ip_protocol", pyObj_tmp)) {
     PyErr_Print();
