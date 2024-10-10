@@ -22,7 +22,7 @@ AsyncCluster
         See :ref:`AsyncCluster Overloads<async-cluster-overloads-ref>` for details on overloaded methods.
 
     .. automethod:: execute_query
-    .. automethod:: close
+    .. automethod:: shutdown
 
 
 AsyncDatabase

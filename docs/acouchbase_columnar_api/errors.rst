@@ -5,7 +5,7 @@ Errors
 .. contents::
     :local:
 
-.. module:: acouchbase_columnar.exceptions
+.. module:: acouchbase_columnar.errors
 
 
 ColumnarError

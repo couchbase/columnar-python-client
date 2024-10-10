@@ -21,7 +21,7 @@ Cluster
         See :ref:`Cluster Overloads<cluster-overloads-ref>` for details on overloaded methods.
 
     .. automethod:: execute_query
-    .. automethod:: close
+    .. automethod:: shutdown
 
 
 Database

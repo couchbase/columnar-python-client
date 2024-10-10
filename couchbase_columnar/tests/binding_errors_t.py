@@ -19,12 +19,12 @@ from enum import IntEnum
 
 import pytest
 
-from couchbase_columnar.exceptions import (ColumnarError,
-                                           InternalSDKError,
-                                           InvalidCredentialError,
-                                           QueryError,
-                                           TimeoutError)
-from couchbase_columnar.protocol.exceptions import CoreColumnarError, ErrorMapper
+from couchbase_columnar.errors import (ColumnarError,
+                                       InternalSDKError,
+                                       InvalidCredentialError,
+                                       QueryError,
+                                       TimeoutError)
+from couchbase_columnar.protocol.errors import CoreColumnarError, ErrorMapper
 from couchbase_columnar.protocol.pycbcc_core import _test_exception_builder, core_client_error_code
 
 
