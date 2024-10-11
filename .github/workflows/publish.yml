@@ -343,13 +343,14 @@ jobs:
     name: Publish SDK API docs
     needs: [upload-api-docs, validate-pypi]
     environment: publish
-    # permissions:
-    #   id-token: write
-    #   contents: read
+    permissions:
+      id-token: write
+      contents: read
     if: |
       always()
       && (needs.build-wheels.result == 'success' || needs.build-wheels.result == 'skipped')
       && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
+      && (needs.validate-pypi.result == 'success' || needs.validate-pypi.result == 'skipped')
       && needs.output-publish-params.result == 'success'
       && needs.output-publish-params.outputs.publish_api_docs == 'true'
     runs-on: ubuntu-22.04
@@ -358,16 +359,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pycbcc-api-docs
-      # - name: Setup AWS Credentials
-      #   uses: aws-actions/configure-aws-credentials@v3
-      #   with:
-      #     role-to-assume: arn:aws:iam::786014483886:role/SDK_GHA
-      #     aws-region: us-west-1
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::786014483886:role/SDK_GHA
+          aws-region: us-west-1
       - name: Upload API docs to S3
         run: |
           ls -alh ./html
-          export S3_URL="s3://docs.couchbase.com/sdk-api/columnar-python-client-$SDK_VERSION/"
-          echo "publish command: aws s3 cp ./html $S3_URL --recursive --acl public-read"
-          # aws s3 cp ./html s3://docs.couchbase.com/sdk-api/columnar-python-client-$SDK_VERSION/ --recursive --acl public-read
+          aws s3 cp ./html s3://docs.couchbase.com/sdk-api/columnar-python-client-$SDK_VERSION/ --recursive --acl public-read
         env:
           SDK_VERSION: ${{ inputs.version }}
