@@ -40,6 +40,10 @@ on:
         type: string
 
 
+env:
+  DEFAULT_PYTHON: "3.8"
+
+
 jobs:
   validate-input:
     runs-on: ubuntu-22.04
@@ -82,8 +86,6 @@ jobs:
 
   test-setup:
     runs-on: ubuntu-22.04
-    outputs:
-      install-cmd: ${{ inputs.packaging_index == 'TEST_PYPI' && steps.test-pypi-cmd.outputs.install_cmd && steps.pypi-cmd.outputs.install_cmd }}
     needs: validate-input
     steps:
       - name: Setup Python
@@ -105,24 +107,13 @@ jobs:
           mv test_config.ini pycbcc_test
         env:
           CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
-      - name: Create install command
-        id: test-pypi-cmd
-        if: ${{ inputs.packaging_index == 'TEST_PYPI'}}
+      - name: Download quick test script
         run: |
-          export INSTALL_CMD='-i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple couchbase==$SDK_VERSION'
-          echo "INSTALL_CMD=$INSTALL_CMD"
-          echo "install_cmd=$INSTALL_CMD" >> $GITHUB_OUTPUT
+          cd pycbcc_test
+          curl -o columnar_async_quick_test.py ${CI_SCRIPTS_URL}/release_smoke_tests/columnar_async_quick_test.py
+          curl -o columnar_quick_test.py ${CI_SCRIPTS_URL}/release_smoke_tests/columnar_quick_test.py
         env:
-          SDK_VERSION: ${{ inputs.version }}
-      - name: Create install command
-        id: pypi-cmd
-        if: ${{ inputs.packaging_index  == 'PYPI'}}
-        run: |
-          export=INSTALL_CMD='couchbase==$SDK_VERSION'
-          echo "INSTALL_CMD=$INSTALL_CMD"
-          echo "install_cmd=$INSTALL_CMD" >> $GITHUB_OUTPUT
-        env:
-          SDK_VERSION: ${{ inputs.version }}
+          CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
       - name: Upload test setup
         uses: actions/upload-artifact@v4
         with:
@@ -151,26 +142,172 @@ jobs:
         with:
           name: pycbcc-test-setup
           path: pycbcc
-      - name: Download quick test script
-        run: |
-          cd pycbcc
-          curl -o columnar_async_quick_test.py ${CI_SCRIPTS_URL}/release_smoke_tests/columnar_async_quick_test.py
-          curl -o columnar_quick_test.py ${CI_SCRIPTS_URL}/release_smoke_tests/columnar_quick_test.py
-        env:
-          CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
-      - name: Run verification tests in docker
+      - name: Run test PyPI verification tests in docker
+        if: ${{ inputs.packaging_index  == 'TEST_PYPI'}}
         uses: addnab/docker-run-action@v3
         with:
           image: python:${{ matrix.python-version }}-slim-bullseye
           options: >-
             --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64'}}
             -v ${{ github.workspace }}/pycbcc:/pycbcc
-            -e INSTALL_CMD=${{ needs.test-setup.outputs.install-cmd }}
+            -e SDK_VERSION=${{ inputs.version }}
           run: |
             env
             python -m pip install --upgrade pip setuptools wheel
-            python -m pip install $INSTALL_CMD -v -v -v
+            python -m pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple couchbase-columnar==$SDK_VERSION -v -v -v
             python -m pip list
             cd pycbcc
             python columnar_quick_test.py
             python columnar_async_quick_test.py
+      - name: Run PyPI verification tests in docker
+        if: ${{ inputs.packaging_index  == 'PYPI'}}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: python:${{ matrix.python-version }}-slim-bullseye
+          options: >-
+            --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64'}}
+            -v ${{ github.workspace }}/pycbcc:/pycbcc
+            -e SDK_VERSION=${{ inputs.version }}
+          run: |
+            env
+            python -m pip install --upgrade pip setuptools wheel
+            python -m pip install couchbase-columnar==$SDK_VERSION -v -v -v
+            python -m pip list
+            cd pycbcc
+            python columnar_quick_test.py
+            python columnar_async_quick_test.py
+
+  verify-musllinux:
+    needs: test-setup
+    runs-on: ${{ matrix.os }}
+    container:
+      image: python:${{ matrix.python-version }}-alpine3.19
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu-22.04']
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        arch: ['x86_64']
+    steps:
+      - name: Download test setup
+        uses: actions/download-artifact@v4
+        with:
+          name: pycbcc-test-setup
+          path: pycbcc
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Run test PyPI verification tests
+        if: ${{ inputs.packaging_index  == 'TEST_PYPI'}}
+        run: |
+          env
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple couchbase-columnar==$SDK_VERSION -v -v -v
+          python -m pip list
+          cd pycbcc
+          python columnar_quick_test.py
+          python columnar_async_quick_test.py
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+      - name: Run PyPI verification tests
+        if: ${{ inputs.packaging_index  == 'PYPI'}}
+        run: |
+          env
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install couchbase-columnar==$SDK_VERSION -v -v -v
+          python -m pip list
+          cd pycbcc
+          python columnar_quick_test.py
+          python columnar_async_quick_test.py
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+
+  verify-macos:
+    needs: test-setup
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["macos-13", "macos-14"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Download test setup
+        uses: actions/download-artifact@v4
+        with:
+          name: pycbcc-test-setup
+          path: pycbcc
+      - name: Run test PyPI verification tests
+        if: ${{ inputs.packaging_index  == 'TEST_PYPI'}}
+        run: |
+          env
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple couchbase-columnar==$SDK_VERSION -v -v -v
+          python -m pip list
+          cd pycbcc
+          python columnar_quick_test.py
+          python columnar_async_quick_test.py
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+      - name: Run PyPI verification tests
+        if: ${{ inputs.packaging_index  == 'PYPI'}}
+        run: |
+          env
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install couchbase-columnar==$SDK_VERSION -v -v -v
+          python -m pip list
+          cd pycbcc
+          python columnar_quick_test.py
+          python columnar_async_quick_test.py
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+
+  verify-windows:
+    needs: test-setup
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["windows-latest"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        arch: ["AMD64"]
+    steps:
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Download test setup
+        uses: actions/download-artifact@v4
+        with:
+          name: pycbcc-test-setup
+          path: pycbcc
+      - name: Run test PyPI verification tests
+        if: ${{ inputs.packaging_index  == 'TEST_PYPI'}}
+        run: |
+          env
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple couchbase-columnar==$env:SDK_VERSION -v -v -v
+          python -m pip list
+          cd pycbcc
+          python columnar_quick_test.py
+          python columnar_async_quick_test.py
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+      - name: Run PyPI verification tests
+        if: ${{ inputs.packaging_index  == 'PYPI'}}
+        run: |
+          env
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install couchbase-columnar==$env:SDK_VERSION -v -v -v
+          python -m pip list
+          cd pycbcc
+          python columnar_quick_test.py
+          python columnar_async_quick_test.py
+        env:
+          SDK_VERSION: ${{ inputs.version }}
