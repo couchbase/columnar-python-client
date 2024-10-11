@@ -201,10 +201,12 @@ jobs:
       && needs.output-publish-params.result == 'success'
       && needs.output-publish-params.outputs.publish_test_pypi == 'true'
     runs-on: ubuntu-22.04
-    environment: publish
-    # permissions:
-    #   # This permission is required for pypi's "trusted publisher" feature
-    #   id-token: write
+    environment:
+      name: publish
+      url: https://pypi.org/p/couchbase-columnar
+    permissions:
+      # This permission is required for pypi's "trusted publisher" feature
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         if: ${{ inputs.wheels_run_id == '' }}
@@ -244,6 +246,10 @@ jobs:
         run: |
           ls -alh dist
           twine check dist/*
+      - name: Publish package distributions to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
 
 
   validate-test-pypi:
@@ -270,7 +276,12 @@ jobs:
       && needs.output-publish-params.result == 'success'
       && needs.output-publish-params.outputs.publish_pypi == 'true'
     runs-on: ubuntu-22.04
-    environment: publish
+    environment:
+      name: publish
+      url: https://pypi.org/p/couchbase-columnar
+    permissions:
+      # This permission is required for pypi's "trusted publisher" feature
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         if: ${{ inputs.wheels_run_id == '' }}
@@ -310,6 +321,8 @@ jobs:
         run: |
           ls -alh dist
           twine check dist/*
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
 
   validate-pypi:
@@ -330,6 +343,9 @@ jobs:
     name: Publish SDK API docs
     needs: [upload-api-docs, validate-pypi]
     environment: publish
+    # permissions:
+    #   id-token: write
+    #   contents: read
     if: |
       always()
       && (needs.build-wheels.result == 'success' || needs.build-wheels.result == 'skipped')
@@ -342,7 +358,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pycbcc-api-docs
-      - name: Publish API docs to S3
+      # - name: Setup AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@v3
+      #   with:
+      #     role-to-assume: arn:aws:iam::786014483886:role/SDK_GHA
+      #     aws-region: us-west-1
+      - name: Upload API docs to S3
         run: |
-          export SPHINX_DIR=${{ github.workspace }}/html
-          ls -alh $SPHINX_DIR
+          ls -alh ./html
+          export S3_URL="s3://docs.couchbase.com/sdk-api/columnar-python-client-$SDK_VERSION/"
+          echo "publish command: aws s3 cp ./html $S3_URL --recursive --acl public-read"
+          # aws s3 cp ./html s3://docs.couchbase.com/sdk-api/columnar-python-client-$SDK_VERSION/ --recursive --acl public-read
+        env:
+          SDK_VERSION: ${{ inputs.version }}
