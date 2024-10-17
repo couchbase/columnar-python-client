@@ -118,7 +118,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
-          name: pycbcc-test-setup
+          name: pycbcc-test-setup-${{ inputs.packaging_index  == 'TEST_PYPI' && 'test-pypi' || 'pypi'}}
           path: |
             pycbcc_test/
 
@@ -140,7 +140,7 @@ jobs:
       - name: Download test setup
         uses: actions/download-artifact@v4
         with:
-          name: pycbcc-test-setup
+          name: pycbcc-test-setup-${{ inputs.packaging_index  == 'TEST_PYPI' && 'test-pypi' || 'pypi'}}
           path: pycbcc
       - name: Run test PyPI verification tests in docker
         if: ${{ inputs.packaging_index  == 'TEST_PYPI'}}
@@ -192,7 +192,7 @@ jobs:
       - name: Download test setup
         uses: actions/download-artifact@v4
         with:
-          name: pycbcc-test-setup
+          name: pycbcc-test-setup-${{ inputs.packaging_index  == 'TEST_PYPI' && 'test-pypi' || 'pypi'}}
           path: pycbcc
       - name: Confirm Python version
         run: python -c "import sys; print(sys.version)"
@@ -239,7 +239,7 @@ jobs:
       - name: Download test setup
         uses: actions/download-artifact@v4
         with:
-          name: pycbcc-test-setup
+          name: pycbcc-test-setup-${{ inputs.packaging_index  == 'TEST_PYPI' && 'test-pypi' || 'pypi'}}
           path: pycbcc
       - name: Run test PyPI verification tests
         if: ${{ inputs.packaging_index  == 'TEST_PYPI'}}
@@ -285,7 +285,7 @@ jobs:
       - name: Download test setup
         uses: actions/download-artifact@v4
         with:
-          name: pycbcc-test-setup
+          name: pycbcc-test-setup-${{ inputs.packaging_index  == 'TEST_PYPI' && 'test-pypi' || 'pypi'}}
           path: pycbcc
       - name: Run test PyPI verification tests
         if: ${{ inputs.packaging_index  == 'TEST_PYPI'}}

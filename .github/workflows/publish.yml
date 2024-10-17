@@ -26,7 +26,7 @@ on:
       publish_input:
         description: "JSON formatted object representing publish options."
         required: false
-        default: "{\"PUBLISH_TEST_PYPI\": true, \"PUBLISH_PYPI\": true, \"PUBLISH_API_DOCS\": true, \"SKIP_TESTS\": false}"
+        default: "{\"PUBLISH_TEST_PYPI\": true, \"PUBLISH_PYPI\": true, \"PUBLISH_API_DOCS\": true, \"API_DOCS_GIT_TAG\": true, \"SKIP_TESTS\": false}"
         type: string
 
 env:
@@ -62,6 +62,7 @@ jobs:
       publish_pypi: ${{ steps.output-publish-params.outputs.publish_pypi }}
       publish_api_docs: ${{ steps.output-publish-params.outputs.publish_api_docs }}
       skip_tests: ${{ steps.output-publish-params.outputs.skip_tests }}
+      api_docs_git_tag: ${{ steps.output-publish-params.outputs.api_docs_git_tag }}
     steps:
       - name: Output Publish parameters
         id: output-publish-params
@@ -70,10 +71,12 @@ jobs:
           echo "PUBLISH_TEST_PYPI=$PUBLISH_TEST_PYPI"
           echo "PUBLISH_PYPI=$PUBLISH_PYPI"
           echo "PUBLISH_API_DOCS=$PUBLISH_API_DOCS"
+          echo "API_DOCS_GIT_TAG=$API_DOCS_GIT_TAG"
           echo "SKIP_TESTS=$SKIP_TESTS"
           echo "publish_test_pypi=$PUBLISH_TEST_PYPI" >> $GITHUB_OUTPUT
           echo "publish_pypi=$PUBLISH_PYPI" >> $GITHUB_OUTPUT
           echo "publish_api_docs=$PUBLISH_API_DOCS" >> $GITHUB_OUTPUT
+          echo "api_docs_git_tag=$API_DOCS_GIT_TAG" >> $GITHUB_OUTPUT
           echo "skip_tests=$SKIP_TESTS" >> $GITHUB_OUTPUT
 
 
@@ -124,11 +127,12 @@ jobs:
 
   upload-api-docs:
     name: Upload API docs as artifact
-    needs: [build-wheels, tests]
+    needs: [build-wheels, tests, output-publish-params]
     if: |
       always()
       && (needs.build-wheels.result == 'success' || needs.build-wheels.result == 'skipped')
       && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
+      && needs.output-publish-params.result == 'success'
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout (with SHA)
@@ -161,7 +165,7 @@ jobs:
       - name: Confirm Python version
         run: python -c "import sys; print(sys.version)"
       - name: Setup API docs
-        if: inputs.version != ''
+        if: inputs.version != '' && needs.output-publish-params.outputs.api_docs_git_tag == 'true'
         run: |
           git config user.name "Couchbase SDK Team"
           git config user.email "sdk_dev@couchbase.com"
@@ -172,7 +176,7 @@ jobs:
         env:
           PYCBCC_VERSION: ${{ inputs.version }}
       - name: Setup API docs
-        if: inputs.version == ''
+        if: inputs.version == '' || needs.output-publish-params.outputs.api_docs_git_tag == 'false'
         run: |
           python couchbase_columnar_version.py --mode make
           ls -alh
