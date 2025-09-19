@@ -1,7 +1,7 @@
-#  Copyright 2016-2024. Couchbase, Inc.
+#  Copyright 2016-2025. Couchbase, Inc.
 #  All Rights Reserved.
 #
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Apache License, Version 2.0 (the "License")
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
 #
@@ -20,6 +20,27 @@ include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 17)
 
+function(get_python_version)
+  if(DEFINED ENV{PYCBCC_PYTHON3_EXECUTABLE})
+    message(STATUS "Using python3 executable from environment: $ENV{PYCBCC_PYTHON3_EXECUTABLE}")
+    set(PYTHON3_EXE $ENV{PYCBCC_PYTHON3_EXECUTABLE})
+  else()
+    message(STATUS "Using default python3 executable")
+    set(PYTHON3_EXE "python3")
+  endif()
+
+  # Be careful with whitespace
+  execute_process(COMMAND ${PYTHON3_EXE} -c
+                  "import platform
+import re
+version = platform.python_version()
+match = re.search(r'\\d+\\.\\d+\\.\\d+', version)
+print(match.group())"
+                  OUTPUT_VARIABLE local_python_version
+                  OUTPUT_STRIP_TRAILING_WHITESPACE)
+  set(LOCAL_PYTHON_VERSION "${local_python_version}" PARENT_SCOPE)
+endfunction()
+
 if(WIN32)
   # cmake-format: off
   # MultiThreaded$<$<CONFIG:Debug>:Debug>DLL for /MD compile flag
@@ -33,19 +54,31 @@ endif()
 project(couchbase_client)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(PYTHON_VERSION_EXACT)
-  set(Python_FIND_VIRTUALENV FIRST)
-  message("finding python version ${PYTHON_VERSION_EXACT}")
+get_python_version()
+message(STATUS "LOCAL_PYTHON_VERSION=${LOCAL_PYTHON_VERSION}")
+
+if(LOCAL_PYTHON_VERSION)
+  set(Python3_FIND_VIRTUALENV FIRST)
+  message(STATUS "Attempting to find python version: ${LOCAL_PYTHON_VERSION}")
+  find_package(Python3 ${LOCAL_PYTHON_VERSION} EXACT COMPONENTS Interpreter Development.Module)
 else()
-  set(PYTHON_VERSION_EXACT 3.8)
+  find_package(Python3 COMPONENTS Interpreter Development.Module)
 endif()
-find_package(Python3 ${PYTHON_VERSION_EXACT} COMPONENTS Interpreter Development.Module)
+
 
 if(WIN32)
   set(PYCBC_C_MOD_SUFFIX ".pyd")
 else()
   set(PYCBC_C_MOD_SUFFIX ".so")
 endif()
+
+file(READ "${PROJECT_SOURCE_DIR}/couchbase_columnar/_version.py" PYCBCC_VERSION_CONTENTS)
+string(REGEX MATCH "__version__.*([0-9]+\\.[0-9]+\\.[0-9]+)(\\.?[+a-z0-9]*)" PYCBCC_FOUND_VERSION ${PYCBCC_VERSION_CONTENTS})
+set(PYCBCC_VERSION "${CMAKE_MATCH_1}")
+if(NOT CMAKE_MATCH_2 STREQUAL "")
+  set(PYCBCC_VERSION "${PYCBCC_VERSION}${CMAKE_MATCH_2}")
+endif()
+message(STATUS "PYCBCC_VERSION=${PYCBCC_VERSION}")
 
 option(USE_STATIC_BORINGSSL "Statically link BoringSSL instead of dynamically linking OpenSSL" FALSE)
 message(STATUS "USE_STATIC_BORINGSSL=${USE_STATIC_BORINGSSL}")
@@ -72,7 +105,7 @@ if(NOT USE_STATIC_BORINGSSL)
       if(NOT OPENSSL_VERSION)
         message(STATUS "No OpenSSL version set...cannot attempt to download.")
       else()
-        # default version is currently 1.1.1g (see setup.py)
+        # see pycbcc_build_setup.py for default OpenSSL versions
         FetchContent_Declare(openssl
                              URL https://github.com/python/cpython-bin-deps/archive/openssl-bin-${OPENSSL_VERSION}.zip)
         message(STATUS "fetching OpenSSL version: ${OPENSSL_VERSION}")
@@ -85,8 +118,15 @@ if(NOT USE_STATIC_BORINGSSL)
       find_program(BREW_COMMAND brew)
       if(BREW_COMMAND)
         message(STATUS "brew command: ${BREW_COMMAND}")
+        set(BREW_OPENSSL "openssl@3")
+        if(USE_OPENSSLV1_1)
+          set(BREW_OPENSSL "openssl@1.1")
+          message(STATUS "Using OpenSSL v1.1 from homebrew")
+        else()
+          message(STATUS "Using OpenSSL v3 from homebrew")
+        endif()
         execute_process(
-          COMMAND ${BREW_COMMAND} --prefix openssl@1.1
+          COMMAND ${BREW_COMMAND} --prefix ${BREW_OPENSSL}
           OUTPUT_VARIABLE BREW_OPENSSL_PREFIX
           RESULT_VARIABLE BREW_RESULT
           OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -105,7 +145,7 @@ if(NOT USE_STATIC_BORINGSSL)
   endif()
 
   message(STATUS "Adding ${OPENSSL_INCLUDE_DIR} to include dirs...")
-  include_directories(${OPENSSL_INCLUDE_DIR})
+  include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 else()
   set(COUCHBASE_CXX_CLIENT_POST_LINKED_OPENSSL
       OFF
@@ -113,8 +153,31 @@ else()
   set(COUCHBASE_CXX_CLIENT_STATIC_BORINGSSL
       ON
       CACHE BOOL "" FORCE)
+  option(SET_OPENSSL_DIR_TO_BORINGSSL "Set OPENSSL_ROOT_DIR to BoringSSL dir" FALSE)
+  message(STATUS "SET_OPENSSL_DIR_TO_BORINGSSL=${SET_OPENSSL_DIR_TO_BORINGSSL}")
+  if(DEFINED CPM_SOURCE_CACHE AND SET_OPENSSL_DIR_TO_BORINGSSL)
+    set(BORINGSSL_CACHE_ROOT "${CPM_SOURCE_CACHE}")
+
+    # Use glob to find the directory matching 'boringssl/<hash>/boringssl'
+    # The result will be a list containing a single path.
+    file(GLOB BORINGSSL_DIRS "${BORINGSSL_CACHE_ROOT}/boringssl/*/boringssl")
+
+    # if (NOT BORINGSSL_DIRS)
+    #     message(FATAL_ERROR "Could not find BoringSSL in the CPM cache. Check your build setup.")
+    # endif()
+
+    # Get the first (and only) path from the list and set it as the root.
+    list(GET BORINGSSL_DIRS 0 BORINGSSL_ROOT_PATH)
+
+    message(STATUS "Setting OPENSSL_ROOT_DIR to BORINGSSL_ROOT_PATH=${BORINGSSL_ROOT_PATH}")
+    set(OPENSSL_ROOT_DIR ${BORINGSSL_ROOT_PATH})
+    message(STATUS "OPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+  endif()
 endif()
 
+set(COUCHBASE_CXX_CLIENT_WRAPPER_UNIFIED_ID
+    "python/${PYCBCC_VERSION}"
+    CACHE STRING "" FORCE)
 set(COUCHBASE_CXX_CLIENT_COLUMNAR
     ON
     CACHE INTERNAL "")
@@ -196,7 +259,7 @@ file(
 add_library(pycbcc_core SHARED ${SOURCE_FILES})
 
 target_include_directories(
-  pycbcc_core PRIVATE
+  pycbcc_core PRIVATE SYSTEM
   "${COUCHBASE_CXX_BINARY_DIR}/generated"
   "${COUCHBASE_CXX_SOURCE_DIR}"
   "${COUCHBASE_CXX_SOURCE_DIR}/third_party/cxx_function"
@@ -212,7 +275,6 @@ if(WIN32)
     asio
     Microsoft.GSL::GSL
     taocpp::json
-    fmt::fmt
     spdlog::spdlog)
 else()
   target_link_libraries(
@@ -221,7 +283,6 @@ else()
     asio
     Microsoft.GSL::GSL
     taocpp::json
-    fmt::fmt
     spdlog::spdlog)
   if(APPLE)
     target_link_options(

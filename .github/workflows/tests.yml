@@ -70,7 +70,7 @@ on:
 
 
 env:
-  DEFAULT_PYTHON: "3.8"
+  DEFAULT_PYTHON: "3.9"
 
 
 jobs:

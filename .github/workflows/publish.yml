@@ -30,7 +30,7 @@ on:
         type: string
 
 env:
-  DEFAULT_PYTHON: "3.8"
+  DEFAULT_PYTHON: "3.9"
   PYTHON_VERSIONS: "3.8,3.9,3.10,3.11,3.12"
   X86_64_PLATFORMS: "manylinux2014,musllinux_1_1,macosx,win"
   ARM64_PLATFORMS: "manylinux2014,macosx"
@@ -149,13 +149,13 @@ jobs:
       - uses: actions/download-artifact@v4
         if: ${{ inputs.wheels_run_id == '' }}
         with:
-          name: manylinux-x86_64-python3.8-shared-object
+          name: manylinux-x86_64-python3.9-shared-object
           run-id: ${{ needs.build-wheels.outputs.workflow_run_id }}
           github-token: ${{ github.token }}
       - uses: actions/download-artifact@v4
         if: ${{ inputs.wheels_run_id != '' }}
         with:
-          name: manylinux-x86_64-python3.8-shared-object
+          name: manylinux-x86_64-python3.9-shared-object
           run-id: ${{ inputs.wheels_run_id }}
           github-token: ${{ github.token }}
       - name: Setup Python

@@ -78,7 +78,7 @@ class SecurityOptions(SecurityOptionsBase):
         trust_only_certificates (Optional[List[str]]): If set, SDK will trust only the PEM-encoded certificate(s) specified. Defaults to `None`.
         trust_only_platform (Optional[bool]): If enabled, SDK will trust only the platform certificate(s). Defaults to `None`.
         disable_server_certificate_verification (Optional[bool]): If disabled, SDK will trust any certificate regardless of validity.
-            Should not be disabled in production environments. Defaults to `True` (enabled).
+            Should not be disabled in production environments. Defaults to `None` (certificate validation enabled).
     """  # noqa: E501
 
     @classmethod
