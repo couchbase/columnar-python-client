@@ -50,7 +50,7 @@ on:
 
 
 env:
-  DEFAULT_PYTHON: "3.8"
+  DEFAULT_PYTHON: "3.9"
   PYTHON_VERSIONS: "3.8,3.9,3.10,3.11,3.12"
   X86_64_PLATFORMS: "manylinux2014,musllinux_1_1,macosx,win"
   ARM64_PLATFORMS: "manylinux2014,macosx"
@@ -412,6 +412,11 @@ jobs:
           curl -o parse_wheel_name.py ${CI_SCRIPTS_URL}/ci_scripts/parse_wheel_name.py
         env:
           CI_SCRIPTS_URL: "https://raw.githubusercontent.com/couchbaselabs/sdkbuild-jenkinsfiles/master/python"
+      - name: Uninstall Homebrew OpenSSL
+        if: ${{ matrix.arch == 'x86_64' }}
+        run: |
+          brew uninstall openssl@1.1 || echo "No OpenSSL v1.1 to uninstall"
+          brew uninstall openssl@3 || echo "No OpenSSL v3.x to uninstall"
       - name: Build wheel ${{ matrix.arch }}
         run: |
           ls -alh
@@ -424,6 +429,7 @@ jobs:
         env:
           PYCBCC_BUILD_TYPE: RelWithDebInfo
           PYCBCC_USE_OPENSSL: OFF
+          PYCBCC_SET_OPENSSL_DIR_TO_BORINGSSL: ON
           PYCBCC_VERBOSE_MAKEFILE: ON
           CCACHE_DIR: ${{ github.workspace }}/.ccache
           PYCBCC_CB_CACHE_OPTION: ccache

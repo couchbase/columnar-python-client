@@ -59,6 +59,11 @@ create_columnar_response(couchbase::core::columnar::query_result resp,
     return;
   }
   if (err.ec) {
+    CB_LOG_DEBUG("PYCBCC: columnar_query_iterator received error from query operation. "
+                 "ec={}, message={}, client_context_id={}",
+                 err.ec.value(),
+                 err.message,
+                 query_iter->pending_op_->client_context_id());
     pyObj_exc = pycbcc_build_exception(err, __FILE__, __LINE__);
     if (pyObj_callback == nullptr) {
       query_iter->barrier_->set_value(pyObj_exc);

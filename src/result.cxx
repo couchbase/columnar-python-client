@@ -221,6 +221,8 @@ get_columnar_query_metadata(couchbase::core::columnar::query_metadata metadata)
 static void
 columnar_query_iterator_dealloc(columnar_query_iterator* self)
 {
+  CB_LOG_DEBUG("PYCBCC: dealloc columnar_query_iterator, client_context_id: {}",
+               self->pending_op_ ? self->pending_op_->client_context_id() : "N/A");
   Py_XDECREF(self->row_callback);
   Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -228,11 +230,11 @@ columnar_query_iterator_dealloc(columnar_query_iterator* self)
 static PyObject*
 columnar_query_iterator__cancel__(columnar_query_iterator* self)
 {
-  columnar_query_iterator* query_iter = reinterpret_cast<columnar_query_iterator*>(self);
-  if (query_iter->pending_op_ && !query_iter->query_result_) {
-    query_iter->pending_op_->cancel();
-  } else if (query_iter->query_result_) {
-    query_iter->query_result_->cancel();
+  if (self->query_result_) {
+    self->query_result_->cancel();
+  }
+  if (self->pending_op_) {
+    self->pending_op_->cancel();
   }
 
   Py_RETURN_NONE;
@@ -298,6 +300,7 @@ columnar_query_iterator_iter(PyObject* self)
 void
 get_next_row(columnar_query_result_variant result,
              couchbase::core::columnar::error err,
+             const std::string& client_context_id,
              PyObject* pyObj_row_callback,
              std::shared_ptr<std::promise<PyObject*>> barrier = nullptr)
 {
@@ -310,6 +313,11 @@ get_next_row(columnar_query_result_variant result,
 
   PyGILState_STATE state = PyGILState_Ensure();
   if (err.ec) {
+    CB_LOG_DEBUG("PYCBCC: columnar_query_iterator received error from get_next_row. "
+                 "ec={}, message={}, client_context_id={}",
+                 err.ec.value(),
+                 err.message,
+                 client_context_id);
     pyObj_exc = pycbcc_build_exception(err, __FILE__, __LINE__);
     if (pyObj_row_callback == nullptr) {
       barrier->set_value(pyObj_exc);
@@ -369,8 +377,9 @@ columnar_query_iterator_iternext(PyObject* self)
 
   query_iter->query_result_->next_row(
     [row_callback = query_iter->row_callback,
+     client_context_id = query_iter->pending_op_->client_context_id(),
      barrier](columnar_query_result_variant res, couchbase::core::columnar::error err) mutable {
-      get_next_row(res, err, row_callback, barrier);
+      get_next_row(res, err, client_context_id, row_callback, barrier);
     });
 
   if (query_iter->row_callback == nullptr) {

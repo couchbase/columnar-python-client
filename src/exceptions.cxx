@@ -127,6 +127,10 @@ pycbcc_build_error_details(couchbase::core::columnar::error err, const char* fil
   PyObject* pyObj_error_details = PyDict_New();
 
   if (err.ec == couchbase::core::columnar::client_errc::canceled) {
+    CB_LOG_DEBUG(
+      "PYCBCC: Adding canceled client_error_code to error_details. error_code={}, ec.message={}",
+      err.ec.value(),
+      err.ec.message());
     PyObject* pyObj_err_ec = PyLong_FromLong(static_cast<long>(CoreClientErrors::CANCELED));
     if (-1 == PyDict_SetItemString(pyObj_error_details, "client_error_code", pyObj_err_ec)) {
       PyErr_Clear();
@@ -138,6 +142,10 @@ pycbcc_build_error_details(couchbase::core::columnar::error err, const char* fil
     }
     Py_DECREF(pyObj_err_ec);
   } else if (err.ec == couchbase::core::columnar::client_errc::cluster_closed) {
+    CB_LOG_DEBUG(
+      "PYCBCC: Adding runtime client_error_code to error_details. error_code={}, ec.message={}",
+      err.ec.value(),
+      err.ec.message());
     // TODO:  should we have another internal error for easier parsing on the Python side?
     PyObject* pyObj_err_ec = PyLong_FromLong(static_cast<long>(CoreClientErrors::RUNTIME));
     if (-1 == PyDict_SetItemString(pyObj_error_details, "client_error_code", pyObj_err_ec)) {
@@ -150,6 +158,10 @@ pycbcc_build_error_details(couchbase::core::columnar::error err, const char* fil
     }
     Py_DECREF(pyObj_err_ec);
   } else if (err.ec == couchbase::core::columnar::client_errc::invalid_argument) {
+    CB_LOG_DEBUG("PYCBCC: Adding invalid argument client_error_code to error_details. "
+                 "error_code={}, ec.message={}",
+                 err.ec.value(),
+                 err.ec.message());
     PyObject* pyObj_err_ec = PyLong_FromLong(static_cast<long>(CoreClientErrors::VALUE));
     if (-1 == PyDict_SetItemString(pyObj_error_details, "client_error_code", pyObj_err_ec)) {
       PyErr_Clear();
@@ -161,6 +173,9 @@ pycbcc_build_error_details(couchbase::core::columnar::error err, const char* fil
     }
     Py_DECREF(pyObj_err_ec);
   } else {
+    CB_LOG_DEBUG("PYCBCC: Adding core_error_code to error_details. error_code={}, ec.message={}",
+                 err.ec.value(),
+                 err.ec.message());
     PyObject* pyObj_err_ec = PyLong_FromLong(err.ec.value());
     if (-1 == PyDict_SetItemString(pyObj_error_details, "core_error_code", pyObj_err_ec)) {
       PyErr_Clear();
