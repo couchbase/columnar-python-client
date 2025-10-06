@@ -16,6 +16,7 @@
  */
 
 #pragma once
+
 #include "Python.h"
 #include <core/logger/configuration.hxx>
 #include <core/logger/logger.hxx>
@@ -23,6 +24,22 @@
 #include <queue>
 #include <spdlog/details/log_msg.h>
 #include <spdlog/sinks/base_sink.h>
+
+// gh-108014 added Py_IsFinalizing() to Python 3.13.0a1
+//    PR: https://github.com/python/cpython/pull/108032/files
+// bpo-1856 added _Py_Finalizing to Python 3.2.1b1.
+#if (0x030201B1 <= PY_VERSION_HEX && PY_VERSION_HEX < 0x030D00A1)
+inline int
+Py_IsFinalizing(void)
+{
+// _Py_IsFinalizing() was added to Python 3.7.0a1.
+#if PY_VERSION_HEX >= 0x30700A1
+  return _Py_IsFinalizing();
+#else
+  return (_Py_IsFinalizing != NULL);
+#endif
+}
+#endif
 
 // the spdlog::log_msg uses string_view, since it doesn't want
 // copies.   Since we consume the log_msg then asych process it,
@@ -81,7 +98,7 @@ public:
 
   ~pycbcc_logger_sink()
   {
-    if (0 == _Py_IsFinalizing()) {
+    if (0 == Py_IsFinalizing()) {
       auto state = PyGILState_Ensure();
       Py_DECREF(pyObj_logger_);
       PyGILState_Release(state);
@@ -90,7 +107,7 @@ public:
 
   void log(const spdlog::details::log_msg& msg) final
   {
-    if (0 == _Py_IsFinalizing()) {
+    if (0 == Py_IsFinalizing()) {
       log_it_(msg);
     }
   }
@@ -137,7 +154,10 @@ protected:
       }
       PyGILState_Release(state);
     } catch (...) {
-      PyGILState_Release(state);
+      // There is still a possibility we hit this after the interpret has started to finalize
+      if (0 == Py_IsFinalizing()) {
+        PyGILState_Release(state);
+      }
     }
   }
 

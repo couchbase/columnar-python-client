@@ -51,7 +51,7 @@ on:
 
 env:
   DEFAULT_PYTHON: "3.9"
-  PYTHON_VERSIONS: "3.8,3.9,3.10,3.11,3.12"
+  PYTHON_VERSIONS: "3.9,3.10,3.11,3.12,3.13"
   X86_64_PLATFORMS: "manylinux2014,musllinux_1_1,macosx,win"
   ARM64_PLATFORMS: "manylinux2014,macosx"
 
@@ -238,7 +238,7 @@ jobs:
       fail-fast: true
       matrix:
         linux-type: ["manylinux", "musllinux"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ["x86_64", "aarch64"]
         exclude:
           - linux-type: musllinux
@@ -372,7 +372,7 @@ jobs:
       fail-fast: true
       matrix:
         os: ["macos-13", "macos-14"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ["x86_64", "arm64"]
         exclude:
           - os: macos-13
@@ -483,7 +483,7 @@ jobs:
       fail-fast: true
       matrix:
         os: ["windows-2022"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ["AMD64"]
     steps:
       - uses: actions/download-artifact@v4
@@ -565,7 +565,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu-22.04']
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ['x86_64', 'aarch64']
     steps:
       - name: Set up QEMU
@@ -609,7 +609,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu-22.04']
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ['x86_64']
     steps:
       - uses: actions/download-artifact@v4
@@ -644,7 +644,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["macos-13", "macos-14"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -681,7 +681,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["windows-latest"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ["AMD64"]
     steps:
       - uses: actions/download-artifact@v4

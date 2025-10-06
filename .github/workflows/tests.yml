@@ -252,7 +252,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ['x86_64', 'aarch64']
         api: ["acouchbase", "couchbase"]
     steps:
@@ -367,7 +367,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ['x86_64']
         api: ["acouchbase", "couchbase"]
     steps:
@@ -483,7 +483,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["macos-13", "macos-14"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ["x86_64", "arm64"]
         api: ["acouchbase", "couchbase"]
         exclude:
@@ -559,7 +559,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["windows-2022"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ["AMD64"]
         api: ["acouchbase", "couchbase"]
     steps:

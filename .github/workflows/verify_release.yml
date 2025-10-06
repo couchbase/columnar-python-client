@@ -128,7 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ['x86_64', 'aarch64']
         api: ["acouchbase", "couchbase"]
     steps:
@@ -186,7 +186,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu-22.04']
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ['x86_64']
     steps:
       - name: Download test setup
@@ -228,7 +228,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["macos-13", "macos-14"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -273,7 +273,7 @@ jobs:
       fail-fast: false
       matrix:
         os: ["windows-latest"]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         arch: ["AMD64"]
     steps:
       - name: Setup Python ${{ matrix.python-version }}
