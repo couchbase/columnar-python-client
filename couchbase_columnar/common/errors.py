@@ -15,10 +15,16 @@
 
 from __future__ import annotations
 
+import sys
 from typing import (Dict,
                     Optional,
                     Union,
                     cast)
+
+if sys.version_info < (3, 10):
+    from typing_extensions import TypeAlias
+else:
+    from typing import TypeAlias
 
 """
 
@@ -45,9 +51,15 @@ class ColumnarError(Exception):
         if self._message is not None and not self._message.isspace():
             details['message'] = self._message
 
+        # if the class instance is a child class, we only need to return the details (if the exist)
+        if isinstance(self, ColumnarError) and type(self) is ColumnarError:
+            class_name = type(self).__name__
+        else:
+            class_name = ''
+
         if details:
-            return f'{type(self).__name__}({details})'
-        return f'{type(self).__name__}()'
+            return f'{class_name}({details})' if class_name else f'{details}'
+        return f'{class_name}()' if class_name else '()'
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -156,3 +168,9 @@ class QueryOperationCanceledError(Exception):
 
     def __str__(self) -> str:
         return self.__repr__()
+
+
+ColumnarErrors: TypeAlias = Union[ColumnarError,
+                                  InvalidCredentialError,
+                                  QueryError,
+                                  TimeoutError]

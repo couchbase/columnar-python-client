@@ -30,6 +30,7 @@ else:
 
 from couchbase_columnar.common.core.utils import is_null_or_empty
 from couchbase_columnar.common.errors import (ColumnarError,
+                                              ColumnarErrors,
                                               InternalSDKError,
                                               QueryOperationCanceledError)
 from couchbase_columnar.protocol.pycbcc_core import core_error
@@ -113,7 +114,7 @@ class ClientErrorMap(Enum):
     InternalSDKError = 4
 
 
-PYCBCC_CORE_ERROR_MAP: Dict[int, type[ColumnarError]] = {
+PYCBCC_CORE_ERROR_MAP: Dict[int, type[ColumnarErrors]] = {
     e.value: getattr(sys.modules['couchbase_columnar.common.errors'], e.name) for e in CoreErrorMap
 }
 
@@ -129,8 +130,8 @@ class ErrorMapper:
     @staticmethod  # noqa: C901
     def build_error(core_error: CoreColumnarError,
                     mapping: Optional[Dict[str, type[ColumnarError]]] = None
-                    ) -> Union[ColumnarError, ClientError]:
-        err_class: Optional[type[ColumnarError]] = None
+                    ) -> Union[ColumnarErrors, ClientError]:
+        err_class: Optional[type[ColumnarErrors]] = None
         err_details = core_error.error_details
         if err_details is not None:
             # Handle client errors from the CPython bindings
