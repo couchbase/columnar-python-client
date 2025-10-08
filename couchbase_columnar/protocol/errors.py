@@ -139,7 +139,10 @@ class ErrorMapper:
                 client_err_class = PYCBCC_CLIENT_ERROR_MAP.get(cast(int, err_code))
                 if client_err_class is None:
                     return InternalSDKError(f'Unable to match error to client_error_code={err_code}')
-                return client_err_class(err_details.get('message'))
+                err = client_err_class(err_details.get('message'))
+                if isinstance(err, QueryOperationCanceledError):
+                    return ColumnarError(base=err)
+                return err
 
             # Handle C++ core errors
             if 'core_error_code' in err_details:

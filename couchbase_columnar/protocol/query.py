@@ -184,7 +184,7 @@ class _QueryStreamingExecutor(StreamingExecutor):
                 self.cancel()
 
         res = self._query_res_ft.result()
-        if isinstance(res, QueryOperationCanceledError):
+        if isinstance(res, ColumnarError) and isinstance(res._base, QueryOperationCanceledError):
             pass
         elif isinstance(res, Exception):
             raise res
