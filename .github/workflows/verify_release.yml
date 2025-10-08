@@ -84,6 +84,7 @@ jobs:
           echo "::error must provide PYCBCC_FQDN."
           exit 1
 
+
   test-setup:
     runs-on: ubuntu-22.04
     needs: validate-input
@@ -122,33 +123,86 @@ jobs:
           path: |
             pycbcc_test/
 
+
   verify-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
     needs: test-setup
     strategy:
       fail-fast: false
       matrix:
+        os: ["ubuntu-22.04", "ubuntu-22.04-arm"]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        arch: ['x86_64', 'aarch64']
         api: ["acouchbase", "couchbase"]
     steps:
-      - name: Set up QEMU
-        if: ${{ matrix.arch == 'aarch64' }}
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
       - name: Download test setup
         uses: actions/download-artifact@v4
         with:
           name: pycbcc-test-setup-${{ inputs.packaging_index  == 'TEST_PYPI' && 'test-pypi' || 'pypi'}}
           path: pycbcc
-      - name: Run test PyPI verification tests in docker
+      - name: Run test PyPI verification tests
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+        run: |
+          env
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple couchbase-columnar==$SDK_VERSION -v -v -v
+          python -m pip list
+          cd pycbcc
+          python columnar_quick_test.py
+          python columnar_async_quick_test.py
+      - name: Run PyPI verification tests
+        if: ${{ inputs.packaging_index  == 'PYPI'}}
+        env:
+          SDK_VERSION: ${{ inputs.version }}
+        run: |
+          env
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install couchbase-columnar==$SDK_VERSION -v -v -v
+          python -m pip list
+          cd pycbcc
+          python columnar_quick_test.py
+          python columnar_async_quick_test.py
+
+
+  verify-musllinux:
+    needs: test-setup
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['ubuntu-22.04']
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - name: Download test setup
+        uses: actions/download-artifact@v4
+        with:
+          name: pycbcc-test-setup-${{ inputs.packaging_index  == 'TEST_PYPI' && 'test-pypi' || 'pypi'}}
+          path: pycbcc
+      - name: Confirm Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Cache Docker image
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker_python_image.tar # Path to store the image archive
+          key: docker-image-python-${{ matrix.python-version }}-alpine
+      - name: Pull and save image if not cached
+        run: |
+          if [ ! -f /tmp/docker_python_image.tar ]; then
+            docker pull python:${{ matrix.python-version }}-alpine
+            docker save python:${{ matrix.python-version }}-alpine -o /tmp/docker_python_image.tar
+          fi
+      - name: Load image if cached
+        run: |
+          if [ -f /tmp/docker_python_image.tar ]; then
+            docker load -i /tmp/docker_python_image.tar
+          fi
+      - name: Run test PyPI verification tests in Docker
         if: ${{ inputs.packaging_index  == 'TEST_PYPI'}}
         uses: addnab/docker-run-action@v3
         with:
-          image: python:${{ matrix.python-version }}-slim-bullseye
+          image: python:${{ matrix.python-version }}-alpine
           options: >-
-            --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64'}}
+            --platform linux/${{ matrix.os == 'ubuntu-22.04-arm' && 'arm64' || 'amd64' }}
             -v ${{ github.workspace }}/pycbcc:/pycbcc
             -e SDK_VERSION=${{ inputs.version }}
           run: |
@@ -159,13 +213,13 @@ jobs:
             cd pycbcc
             python columnar_quick_test.py
             python columnar_async_quick_test.py
-      - name: Run PyPI verification tests in docker
+      - name: Run PyPI verification tests in Docker
         if: ${{ inputs.packaging_index  == 'PYPI'}}
         uses: addnab/docker-run-action@v3
         with:
-          image: python:${{ matrix.python-version }}-slim-bullseye
+          image: python:${{ matrix.python-version }}-alpine
           options: >-
-            --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64'}}
+            --platform linux/${{ matrix.os == 'ubuntu-22.04-arm' && 'arm64' || 'amd64' }}
             -v ${{ github.workspace }}/pycbcc:/pycbcc
             -e SDK_VERSION=${{ inputs.version }}
           run: |
@@ -177,49 +231,6 @@ jobs:
             python columnar_quick_test.py
             python columnar_async_quick_test.py
 
-  verify-musllinux:
-    needs: test-setup
-    runs-on: ${{ matrix.os }}
-    container:
-      image: python:${{ matrix.python-version }}-alpine3.19
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['ubuntu-22.04']
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        arch: ['x86_64']
-    steps:
-      - name: Download test setup
-        uses: actions/download-artifact@v4
-        with:
-          name: pycbcc-test-setup-${{ inputs.packaging_index  == 'TEST_PYPI' && 'test-pypi' || 'pypi'}}
-          path: pycbcc
-      - name: Confirm Python version
-        run: python -c "import sys; print(sys.version)"
-      - name: Run test PyPI verification tests
-        if: ${{ inputs.packaging_index  == 'TEST_PYPI'}}
-        run: |
-          env
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple couchbase-columnar==$SDK_VERSION -v -v -v
-          python -m pip list
-          cd pycbcc
-          python columnar_quick_test.py
-          python columnar_async_quick_test.py
-        env:
-          SDK_VERSION: ${{ inputs.version }}
-      - name: Run PyPI verification tests
-        if: ${{ inputs.packaging_index  == 'PYPI'}}
-        run: |
-          env
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install couchbase-columnar==$SDK_VERSION -v -v -v
-          python -m pip list
-          cd pycbcc
-          python columnar_quick_test.py
-          python columnar_async_quick_test.py
-        env:
-          SDK_VERSION: ${{ inputs.version }}
 
   verify-macos:
     needs: test-setup
@@ -265,6 +276,7 @@ jobs:
           python columnar_async_quick_test.py
         env:
           SDK_VERSION: ${{ inputs.version }}
+
 
   verify-windows:
     needs: test-setup
