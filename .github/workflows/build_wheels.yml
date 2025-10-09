@@ -232,7 +232,6 @@ jobs:
 
   linux-wheels:
     needs: sdist
-    name: Build Python ${{ matrix.python-version }} ${{ matrix.linux-type }} wheel (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -324,7 +323,6 @@ jobs:
 
   save-docs-shared_object:
     needs: linux-wheels
-    name: Save a shared object for building docs
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v4
@@ -361,7 +359,6 @@ jobs:
 
   macos-wheels:
     needs: sdist
-    name: Build Python ${{ matrix.python-version }} macos wheel on ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -472,7 +469,6 @@ jobs:
 
   windows-wheels:
     needs: sdist
-    name: Build Python ${{ matrix.python-version }} Windows wheel (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
