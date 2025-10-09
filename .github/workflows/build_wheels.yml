@@ -232,17 +232,16 @@ jobs:
 
   linux-wheels:
     needs: sdist
-    name: Build Python ${{ matrix.python-version }} ${{ matrix.linux-type }} wheel (${{ matrix.arch }})
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
       matrix:
+        os: ["ubuntu-22.04", "ubuntu-22.04-arm"]
         linux-type: ["manylinux", "musllinux"]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        arch: ["x86_64", "aarch64"]
         exclude:
-          - linux-type: musllinux
-            arch: aarch64
+          - os: ubuntu-22.04-arm
+            linux-type: musllinux
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -278,28 +277,23 @@ jobs:
           CPYTHON_VERSION=$(python -c "import sys;ver=sys.version_info;print(f'cp{ver.major}{ver.minor}')")
           echo "CPython = $CPYTHON_VERSION-$CPYTHON_VERSION"
           echo "cpython_version=$CPYTHON_VERSION-$CPYTHON_VERSION" >> "$GITHUB_OUTPUT"
-      - name: Set up QEMU
-        if: ${{ matrix.arch == 'aarch64' }}
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ github.job }}-${{ matrix.linux-type }}-${{ matrix.arch }}-python${{ matrix.python-version }}
-      - name: Run in docker
+          key: ${{ github.job }}-${{ matrix.linux-type }}-${{ matrix.os == 'ubuntu-22.04-arm' && 'aarch64' || 'x86_64' }}-python${{ matrix.python-version }}
+      - name: Run in Docker
         uses: addnab/docker-run-action@v3
         with:
-          image: jacasey/pycbc_${{ matrix.linux-type == 'manylinux' && 'manylinux2014' || 'musllinux_1_1' }}_${{ matrix.arch }}:1.0.1
+          image: jacasey/pycbc_${{ matrix.linux-type == 'manylinux' && 'manylinux2014' || 'musllinux_1_1' }}_${{ matrix.os == 'ubuntu-22.04-arm' && 'aarch64' || 'x86_64' }}:1.0.1
           options: >-
-            --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64'}}
+            --platform linux/${{ matrix.os == 'ubuntu-22.04-arm' && 'arm64' || 'amd64' }}
             -v ${{ github.workspace }}:/work
             -e PYTHON_SDK_WORKDIR=/work
             -e PYTHON_SDK_WHEELHOUSE=/work/wheelhouse/dist
             -e PYTHON_SDK_DEBUG_WHEELHOUSE=/work/wheelhouse/dist_debug
             -e AUDITWHEEL=/work/auditwheel-pycbcc
             -e PARSE_WHEEL_NAME=/work/parse_wheel_name.py
-            -e WHEEL_PLATFORM=${{ matrix.linux-type == 'manylinux' && 'manylinux2014' || 'musllinux_1_1' }}_${{ matrix.arch }}
+            -e WHEEL_PLATFORM=${{ matrix.linux-type == 'manylinux' && 'manylinux2014' || 'musllinux_1_1' }}_${{ matrix.os == 'ubuntu-22.04-arm' && 'aarch64' || 'x86_64' }}
             -e CPYTHON_VERSIONS=${{ steps.cpython_version.outputs.cpython_version }}
             -e PYCBCC_USE_OPENSSL=OFF
             -e PYCBCC_BUILD_TYPE=RelWithDebInfo
@@ -315,21 +309,20 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
-          name: ${{ matrix.linux-type }}-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          name: ${{ matrix.linux-type }}-${{ matrix.os == 'ubuntu-22.04-arm' && 'aarch64' || 'x86_64' }}-python${{ matrix.python-version }}-wheel
           path: |
             wheelhouse/dist/*.whl
       - name: Upload Python ${{ matrix.python-version }} debug wheel as artifact
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
-          name: pycbcc-debug-artifact-${{ matrix.linux-type }}-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          name: pycbcc-debug-artifact-${{ matrix.linux-type }}-${{ matrix.os == 'ubuntu-22.04-arm' && 'aarch64' || 'x86_64' }}-python${{ matrix.python-version }}-wheel
           path: |
             wheelhouse/dist_debug/*.whl
 
 
   save-docs-shared_object:
     needs: linux-wheels
-    name: Save a shared object for building docs
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v4
@@ -366,7 +359,6 @@ jobs:
 
   macos-wheels:
     needs: sdist
-    name: Build Python ${{ matrix.python-version }} macos wheel on ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -477,7 +469,6 @@ jobs:
 
   windows-wheels:
     needs: sdist
-    name: Build Python ${{ matrix.python-version }} Windows wheel (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -559,80 +550,85 @@ jobs:
 
   validate-manylinux-wheels:
     needs: linux-wheels
-    name: Validate Python ${{ matrix.python-version }} wheel for linux (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: ['ubuntu-22.04']
+        os: ["ubuntu-22.04", "ubuntu-22.04-arm"]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        arch: ['x86_64', 'aarch64']
-    steps:
-      - name: Set up QEMU
-        if: ${{ matrix.arch == 'aarch64' }}
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-      - uses: actions/download-artifact@v4
-        with:
-          name: manylinux-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
-      - name: Run in docker
-        uses: addnab/docker-run-action@v3
-        with:
-          image: python:${{ matrix.python-version }}-slim-bullseye
-          options: >-
-            --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64'}}
-            -v ${{ github.workspace }}:/work
-          run: |
-            python -c "import sys; print(sys.version)"
-            cd /work
-            ls -alh
-            FULL_WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
-            echo "FULL_WHEEL_NAME=$FULL_WHEEL_NAME"
-            python -m pip install $FULL_WHEEL_NAME
-            python -c "from couchbase_columnar.protocol import get_metadata;import pprint;pprint.pprint(get_metadata(detailed=True))"
-      - name: Upload Python ${{ matrix.python-version }} wheel as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 1
-          name: pycbcc-artifact-manylinux-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
-          path: ./*.whl
-
-
-  validate-musllinux-wheels:
-    needs: linux-wheels
-    name: Validate Python ${{ matrix.python-version }} wheel for alpine (${{ matrix.arch }})
-    runs-on: ${{ matrix.os }}
-    container:
-      image: python:${{ matrix.python-version }}-alpine3.19
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['ubuntu-22.04']
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-        arch: ['x86_64']
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: musllinux-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          name: manylinux-${{ matrix.os == 'ubuntu-22.04-arm' && 'aarch64' || 'x86_64' }}-python${{ matrix.python-version }}-wheel
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
       - name: Confirm Python version
         run: python -c "import sys; print(sys.version)"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
       - name: Validate wheel
-        id: validate_wheel
         run: |
+          ls -alh
           FULL_WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
           echo "FULL_WHEEL_NAME=$FULL_WHEEL_NAME"
-          python -m pip install --upgrade pip setuptools wheel
           python -m pip install $FULL_WHEEL_NAME
           python -c "from couchbase_columnar.protocol import get_metadata;import pprint;pprint.pprint(get_metadata(detailed=True))"
       - name: Upload Python ${{ matrix.python-version }} wheel as artifact
         uses: actions/upload-artifact@v4
         with:
           retention-days: 1
-          name: pycbcc-artifact-musllinux-${{ matrix.arch }}-python${{ matrix.python-version }}-wheel
+          name: pycbcc-artifact-manylinux-${{ matrix.os == 'ubuntu-22.04-arm' && 'aarch64' || 'x86_64' }}-python${{ matrix.python-version }}-wheel
+          path: ./*.whl
+
+
+  validate-musllinux-wheels:
+    needs: linux-wheels
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-22.04"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: musllinux-${{ matrix.os == 'ubuntu-22.04-arm' && 'aarch64' || 'x86_64' }}-python${{ matrix.python-version }}-wheel
+      - name: Cache Docker image
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker_python_image.tar # Path to store the image archive
+          key: docker-image-python-${{ matrix.python-version }}-alpine
+      - name: Pull and save image if not cached
+        run: |
+          if [ ! -f /tmp/docker_python_image.tar ]; then
+            docker pull python:${{ matrix.python-version }}-alpine
+            docker save python:${{ matrix.python-version }}-alpine -o /tmp/docker_python_image.tar
+          fi
+      - name: Load image if cached
+        run: |
+          if [ -f /tmp/docker_python_image.tar ]; then
+            docker load -i /tmp/docker_python_image.tar
+          fi
+      - name: Validate wheel in Docker
+        uses: addnab/docker-run-action@v3
+        with:
+          image: python:${{ matrix.python-version }}-alpine
+          options: >-
+            --platform linux/${{ matrix.os == 'ubuntu-22.04-arm' && 'arm64' || 'amd64' }}
+            -v ${{ github.workspace }}:/work
+          run: |
+            python -c "import sys; print(sys.version)"
+            cd /work
+            FULL_WHEEL_NAME=$(find . -name '*.whl' | cut -c 3-)
+            echo "FULL_WHEEL_NAME=$FULL_WHEEL_NAME"
+            python -m pip install --upgrade pip setuptools wheel
+            python -m pip install $FULL_WHEEL_NAME
+            python -c "from couchbase_columnar.protocol import get_metadata;import pprint;pprint.pprint(get_metadata(detailed=True))"
+      - name: Upload Python ${{ matrix.python-version }} wheel as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 1
+          name: pycbcc-artifact-musllinux-${{ matrix.os == 'ubuntu-22.04-arm' && 'aarch64' || 'x86_64' }}-python${{ matrix.python-version }}-wheel
           path: ./*.whl
 
 
